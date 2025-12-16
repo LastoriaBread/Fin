@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>النظام المحاسبي | Accounting Pro</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.rtl.min.css" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;       
+            --primary-dark: #1e40af;
+            --secondary-color: #f8fafc;     
+            --sidebar-bg: #0f172a;          
+            --text-main: #334155;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            /* ألوان الطباعة */
+            --print-primary: #1e3a8a; 
+            --print-header-bg: #eff6ff;
+            --print-border: #94a3b8; 
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f1f5f9;
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            min-height: 100vh;
+            background-color: var(--sidebar-bg);
+            color: white;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 260px;
+            z-index: 1000;
+            transition: 0.3s;
+        }
+
+        .sidebar-brand { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .nav-link { color: #cbd5e1; padding: 12px 20px; margin: 4px 10px; border-radius: 8px; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; }
+        .nav-link i { margin-left: 12px; width: 20px; text-align: center; }
+        .nav-link:hover, .nav-link.active { background-color: var(--primary-color); color: white; transform: translateX(-5px); }
+
+        /* Main Content */
+        .main-content { margin-right: 260px; padding: 30px; transition: 0.3s; }
+
+        /* Cards & Tables */
+        .stats-card { background: white; border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow); border-right: 4px solid var(--primary-color); transition: transform 0.2s; }
+        .stats-card:hover { transform: translateY(-3px); }
+        .stats-card h3 { font-weight: 800; color: var(--primary-dark); margin-top: 10px; }
+        .stats-card p { color: #64748b; font-size: 0.9rem; font-weight: 600; margin: 0; }
+        .icon-box { width: 45px; height: 45px; background: #eff6ff; color: var(--primary-color); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-bottom: 10px; }
+        
+        .custom-table-container { background: white; border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow); }
+        .table thead th { background-color: #f8fafc; color: #475569; font-weight: 700; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+        .table tbody td { vertical-align: middle; }
+
+        /* Search Box Style */
+        .search-box-container { position: relative; max-width: 300px; margin-bottom: 15px; }
+        .search-box-container i { position: absolute; left: 10px; top: 10px; color: #aaa; }
+        .search-box-container input { padding-left: 35px; border-radius: 20px; }
+
+        /* Select2 Customization */
+        .select2-container--bootstrap-5 .select2-selection { border-color: #dee2e6; padding: 0.375rem 0.75rem; height: auto; }
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered { color: var(--text-main); font-weight: 500; }
+
+        /* Auth Screen */
+        #authSection { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .auth-box { background: white; padding: 40px; border-radius: 16px; width: 100%; max-width: 450px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+
+        /* --- تصميم الفاتورة (PRINT STYLES) --- */
+        @media print {
+            .sidebar, .no-print, .btn, .modal, .toast-container, .main-content > div:not(#printArea) { display: none !important; }
+            .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            body { background: white !important; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; height: 100vh; overflow: hidden; }
+            
+            @page {
+                size: A4;
+                margin: 0;
+            }
+
+            #printArea { 
+                display: flex !important; 
+                flex-direction: column;
+                height: 100vh;
+                width: 100%;
+                background: white;
+                font-family: 'Cairo', sans-serif;
+                color: #000;
+                padding: 10mm;
+                box-sizing: border-box;
+                position: relative;
+            }
+            
+            /* Header */
+            .inv-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                padding-bottom: 15px;
+                border-bottom: 2px solid var(--print-primary);
+                margin-bottom: 15px;
+            }
+            .inv-company-info { text-align: right; width: 35%; }
+            .inv-logo-area { text-align: center; width: 30%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+            .inv-qr-area { text-align: left; width: 35%; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
+            
+            .company-name { font-size: 18px; font-weight: 800; color: var(--print-primary); margin-bottom: 5px; }
+            .company-detail { font-size: 11px; margin-bottom: 2px; color: #444; }
+            
+            .doc-title {
+                color: var(--print-primary);
+                font-weight: 800;
+                font-size: 16px;
+                margin-bottom: 5px;
+                border: 1px solid var(--print-primary);
+                padding: 2px 10px;
+                border-radius: 4px;
+                display: inline-block;
+                width: fit-content;
+                min-width: 120px;
+            }
+
+            /* Info Grid - Clean Borders */
+            .inv-meta-grid {
+                display: flex;
+                gap: 15px;
+                margin-bottom: 15px;
+            }
+            .meta-box {
+                flex: 1;
+                border: 1px solid var(--print-border);
+                border-radius: 6px;
+                overflow: hidden;
+            }
+            .meta-header {
+                background-color: var(--print-header-bg);
+                padding: 5px 10px;
+                font-size: 12px;
+                font-weight: 700;
+                color: var(--print-primary);
+                border-bottom: 1px solid var(--print-border);
+            }
+            .meta-content { padding: 8px 10px; }
+            .meta-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
+            .meta-label { color: #666; }
+            .meta-val { font-weight: 700; color: #000; font-family: 'Segoe UI', sans-serif; }
+
+            /* Table - Fixed Grids */
+            .table-wrapper { flex-grow: 1; overflow: hidden; margin-bottom: 10px; }
+            .inv-table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                font-size: 10px; 
+                table-layout: fixed; 
+            }
+            .inv-table th { 
+                background-color: var(--print-primary) !important; 
+                color: white !important; 
+                padding: 6px 4px; 
+                text-align: center; 
+                font-weight: bold;
+                border: 1px solid #000 !important; 
+            }
+            .inv-table td { 
+                border: 1px solid #94a3b8 !important; 
+                padding: 4px; 
+                color: #000;
+            }
+            
+            /* Accounting Numbers Styling */
+            .num-cell {
+                text-align: right; 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                font-weight: 600;
+                font-variant-numeric: tabular-nums; 
+                direction: ltr; 
+                padding-right: 8px !important;
+            }
+            .center-cell { text-align: center; }
+
+            .inv-table tr:nth-child(even) { background-color: #f8fafc; }
+            
+            /* Footer */
+            .inv-footer { margin-top: auto; page-break-inside: avoid; }
+            .totals-container {
+                display: flex;
+                justify-content: flex-end;
+                gap: 15px;
+            }
+            .notes-section { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; }
+            .totals-box { width: 320px; border: 1px solid var(--print-primary); border-radius: 6px; overflow: hidden; }
+            
+            .t-row { display: flex; border-bottom: 1px solid #ddd; font-size: 11px; }
+            .t-row:last-child { border-bottom: none; }
+            .t-label { width: 60%; background: #f8fafc; padding: 5px 10px; font-weight: 700; color: #333; }
+            .t-val { 
+                width: 40%; padding: 5px 10px; text-align: right; font-weight: 700; 
+                font-family: 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; direction: ltr;
+            }
+            
+            .t-final { background-color: var(--print-primary); color: white; }
+            .t-final .t-label { background: transparent; color: white; }
+            .t-final .t-val { color: white; font-size: 14px; }
+
+            body { zoom: 95%; } 
+        }
+
+        .badge-soft-success { background-color: #dcfce7; color: #166534; }
+        .badge-soft-danger { background-color: #fee2e2; color: #991b1b; }
+        .badge-soft-warning { background-color: #fef3c7; color: #92400e; }
+    </style>
+</head>
+<body>
+
+<div id="authSection">
+    <div class="auth-box text-center">
+        <div class="mb-4">
+            <i class="fa-solid fa-chart-simple fa-3x text-primary mb-2"></i>
+            <h3 class="fw-bold">النظام المحاسبي</h3>
+            <p class="text-muted">تسجيل الدخول لإدارة أعمالك</p>
+        </div>
+        
+        <div id="loginForm">
+            <input type="email" id="loginEmail" class="form-control mb-3 p-3" placeholder="البريد الإلكتروني">
+            <input type="password" id="loginPass" class="form-control mb-3 p-3" placeholder="كلمة المرور">
+            <button onclick="login()" class="btn btn-primary w-100 py-3 fw-bold mb-3">دخول</button>
+            <a href="#" onclick="toggleAuth('register')" class="text-decoration-none small">تسجيل حساب شركة جديد؟</a>
+        </div>
+
+        <div id="registerForm" style="display:none;">
+            <div class="row g-2 text-end">
+                <div class="col-12"><input type="email" id="regEmail" class="form-control p-2" placeholder="البريد الإلكتروني"></div>
+                <div class="col-12"><input type="password" id="regPass" class="form-control p-2" placeholder="كلمة المرور"></div>
+                <div class="col-12"><input type="text" id="regBusNameAr" class="form-control p-2" placeholder="اسم الشركة"></div>
+                <div class="col-12"><input type="text" id="regVAT" class="form-control p-2" placeholder="الرقم الضريبي"></div>
+            </div>
+            <button onclick="register()" class="btn btn-success w-100 py-3 mt-3 fw-bold">إنشاء حساب</button>
+            <p class="mt-2"><a href="#" onclick="toggleAuth('login')" class="text-decoration-none small">لديك حساب بالفعل؟</a></p>
+        </div>
+        <div id="authError" class="text-danger mt-3 small fw-bold"></div>
+    </div>
+</div>
+
+<div id="appSection" style="display:none;">
+    
+    <div class="sidebar no-print">
+        <div class="sidebar-brand">
+            <h5 class="mb-0 fw-bold" id="sidebarBusName">شركتي</h5>
+            <small class="text-white-50" style="font-size: 10px;" id="sidebarUserEmail"></small>
+        </div>
+        <ul class="nav flex-column mt-3">
+            <li class="nav-item"><a class="nav-link active" onclick="showSection('dashboard')"><i class="fa-solid fa-home"></i> الرئيسية</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="showSection('invoices')"><i class="fa-solid fa-file-invoice-dollar"></i> الفواتير</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="showSection('items')"><i class="fa-solid fa-boxes-stacked"></i> المنتجات</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="showSection('contacts')"><i class="fa-solid fa-users"></i> العملاء والموردين</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="showSection('manualEntries')"><i class="fa-solid fa-pen-to-square"></i> قيود يدوية</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="showSection('reports')"><i class="fa-solid fa-chart-pie"></i> التقارير</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="showSection('settings')"><i class="fa-solid fa-gear"></i> إعدادات الشركة</a></li>
+        </ul>
+        <div class="mt-auto p-3">
+            <button onclick="logout()" class="btn btn-danger w-100 btn-sm"><i class="fa-solid fa-right-from-bracket ms-2"></i> خروج</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        
+        <div id="dashboard" class="section-content">
+            <h3 class="fw-bold mb-4">لوحة المعلومات</h3>
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="icon-box"><i class="fa-solid fa-wallet"></i></div>
+                        <p>إجمالي المبيعات</p>
+                        <h3 id="dashSales">0.00</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card" style="border-right-color: #10b981;">
+                        <div class="icon-box text-success bg-success-subtle"><i class="fa-solid fa-money-bill-wave"></i></div>
+                        <p>المقبوضات</p>
+                        <h3 id="dashReceived">0.00</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card" style="border-right-color: #ef4444;">
+                        <div class="icon-box text-danger bg-danger-subtle"><i class="fa-solid fa-cart-shopping"></i></div>
+                        <p>المشتريات</p>
+                        <h3 id="dashPurchases">0.00</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card" style="border-right-color: #f59e0b;">
+                        <div class="icon-box text-warning bg-warning-subtle"><i class="fa-solid fa-scale-balanced"></i></div>
+                        <p>صافي الموقف</p>
+                        <h3 id="dashNet">0.00</h3>
+                    </div>
+                </div>
+            </div>
+             <div class="row g-3">
+                <div class="col-md-4"><button onclick="showSection('invoices'); openInvoiceModal()" class="btn btn-outline-primary w-100 p-3 h-100 border-2 fw-bold"><i class="fa fa-plus fa-2x mb-2 d-block"></i> فاتورة جديدة</button></div>
+                <div class="col-md-4"><button onclick="showSection('manualEntries')" class="btn btn-outline-success w-100 p-3 h-100 border-2 fw-bold"><i class="fa fa-hand-holding-dollar fa-2x mb-2 d-block"></i> تسجيل دفعة</button></div>
+                <div class="col-md-4"><button onclick="showSection('contacts'); openContactModal()" class="btn btn-outline-dark w-100 p-3 h-100 border-2 fw-bold"><i class="fa fa-user-plus fa-2x mb-2 d-block"></i> عميل جديد</button></div>
+            </div>
+        </div>
+
+        <div id="invoices" class="section-content" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold">الفواتير</h3>
+                <div>
+                    <button class="btn btn-success me-2" onclick="exportToExcel('invoicesTableRaw', 'Invoices_Report')"><i class="fa fa-file-excel me-2"></i> Excel</button>
+                    <button class="btn btn-primary" onclick="openInvoiceModal()"><i class="fa fa-plus ms-2"></i> إنشاء فاتورة</button>
+                </div>
+            </div>
+            <div class="search-box-container">
+                <i class="fa fa-search"></i>
+                <input type="text" class="form-control" placeholder="بحث برقم الفاتورة أو اسم العميل..." onkeyup="searchTable(this, 'invoicesTable')">
+            </div>
+            <div class="custom-table-container">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="invoicesTableRaw">
+                        <thead>
+                            <tr>
+                                <th>رقم الفاتورة</th>
+                                <th>التاريخ</th>
+                                <th>العميل/المورد</th>
+                                <th>النوع</th>
+                                <th>الإجمالي</th>
+                                <th class="no-print">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoicesTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="items" class="section-content" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold">الأصناف والمنتجات</h3>
+                <div>
+                     <button class="btn btn-success me-2" onclick="exportToExcel('itemsTableRaw', 'Items_List')"><i class="fa fa-file-excel me-2"></i> Excel</button>
+                     <button class="btn btn-primary" onclick="openItemModal()"><i class="fa fa-plus ms-2"></i> صنف جديد</button>
+                </div>
+            </div>
+            <div class="search-box-container">
+                <i class="fa fa-search"></i>
+                <input type="text" class="form-control" placeholder="بحث باسم الصنف أو الكود..." onkeyup="searchTable(this, 'itemsTable')">
+            </div>
+            <div class="custom-table-container">
+                <table class="table table-hover" id="itemsTableRaw">
+                    <thead><tr><th>الكود</th><th>اسم الصنف (عربي)</th><th>Name (En)</th><th>السعر</th></tr></thead>
+                    <tbody id="itemsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="contacts" class="section-content" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold">العملاء والموردين</h3>
+                <button class="btn btn-primary" onclick="openContactModal()"><i class="fa fa-plus ms-2"></i> إضافة جديد</button>
+            </div>
+            <div class="search-box-container">
+                <i class="fa fa-search"></i>
+                <input type="text" class="form-control" placeholder="بحث باسم العميل، الهاتف أو الكود..." onkeyup="searchTable(this, 'contactsTable')">
+            </div>
+            <div class="custom-table-container">
+                <table class="table table-hover">
+                    <thead><tr><th>الكود</th><th>الاسم</th><th>النوع</th><th>الهاتف</th><th>الرصيد</th><th class="no-print">حذف</th></tr></thead>
+                    <tbody id="contactsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="manualEntries" class="section-content" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold">القيود اليدوية والسندات</h3>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card border-0 shadow-sm p-4">
+                        <h5 class="mb-3 border-bottom pb-2 text-primary">تسجيل حركة جديدة</h5>
+                        <select id="payContact" class="form-select mb-3"></select>
+                        <select id="payType" class="form-select mb-3">
+                            <option value="Receipt">سند قبض (من عميل)</option>
+                            <option value="Payment">سند صرف (لمورد)</option>
+                        </select>
+                        <input type="date" id="payDate" class="form-control mb-3">
+                        <input type="number" id="payAmount" class="form-control mb-3 fw-bold" placeholder="المبلغ 0.00">
+                        <input type="text" id="payNote" class="form-control mb-3" placeholder="ملاحظات">
+                        <button class="btn btn-success w-100 fw-bold" onclick="savePayment()">حفظ الحركة</button>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="custom-table-container">
+                        <table class="table table-sm">
+                            <thead><tr><th>#</th><th>التاريخ</th><th>الطرف</th><th>النوع</th><th>المبلغ</th></tr></thead>
+                            <tbody id="paymentsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="reports" class="section-content" style="display:none;">
+            <h3 class="fw-bold mb-4">التقارير (SOA)</h3>
+            <div class="card p-4 border-0 shadow-sm mb-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4"><label class="form-label">العميل</label><select id="repContact" class="form-select"></select></div>
+                    <div class="col-md-3"><label class="form-label">من</label><input type="date" id="repFrom" class="form-control"></div>
+                    <div class="col-md-3"><button class="btn btn-primary w-100 fw-bold" onclick="generateSOA()">عرض</button></div>
+                </div>
+            </div>
+            <div id="soaResult" class="custom-table-container" style="display:none;">
+                <div class="d-flex justify-content-between mb-3">
+                    <h5 class="fw-bold text-primary">كشف حساب: <span id="soaName"></span></h5>
+                    <div>
+                        <button class="btn btn-sm btn-success me-2" onclick="exportToExcel('soaTableRaw', 'Statement_Account')"><i class="fa fa-file-excel"></i> Excel</button>
+                        <button class="btn btn-sm btn-outline-dark" onclick="printSOA()"><i class="fa fa-print"></i> طباعة</button>
+                    </div>
+                </div>
+                <table class="table table-bordered text-center" id="soaTableRaw">
+                    <thead class="table-light"><tr><th>التاريخ</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
+                    <tbody id="soaTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="settings" class="section-content" style="display:none;">
+            <h3 class="fw-bold mb-4">إعدادات الشركة</h3>
+            <div class="card p-4 border-0 shadow-sm">
+                <div class="row g-3">
+                    <div class="col-12 mb-3 text-center border-bottom pb-3">
+                        <img id="logoPreview" src="" style="max-height: 80px; display:none;" class="mb-2">
+                        <br>
+                        <label class="form-label fw-bold">شعار الشركة (Logo)</label>
+                        <input type="file" id="logoInput" class="form-control w-50 mx-auto" accept="image/*">
+                    </div>
+
+                    <div class="col-md-6"><label class="form-label">اسم الشركة (عربي)</label><input type="text" id="setBusNameAr" class="form-control"></div>
+                    <div class="col-md-6"><label class="form-label">Company Name (En)</label><input type="text" id="setBusNameEn" class="form-control"></div>
+                    <div class="col-md-12"><label class="form-label">العنوان</label><input type="text" id="setAddr" class="form-control"></div>
+                    <div class="col-md-4"><label class="form-label">الرقم الضريبي (VAT)</label><input type="text" id="setVAT" class="form-control"></div>
+                    <div class="col-md-4"><label class="form-label text-primary">السجل التجاري (CR)</label><input type="text" id="setCR" class="form-control" placeholder="رقم السجل"></div>
+                    <div class="col-md-4"><label class="form-label">رقم الهاتف</label><input type="text" id="setPhone" class="form-control"></div>
+                    <div class="col-md-4"><label class="form-label">البريد الإلكتروني</label><input type="text" id="setEmail" class="form-control"></div>
+                    <div class="col-12 text-start mt-4"><button class="btn btn-primary px-5 fw-bold" onclick="saveSettings()">حفظ الإعدادات</button></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="invoiceModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">فاتورة جديدة</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                 <div class="row mb-3 bg-white p-2 rounded shadow-sm mx-1 align-items-center">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" id="importRef" class="form-control" placeholder="رقم الفاتورة (مثال: INV-1005)">
+                            <button class="btn btn-outline-primary fw-bold" onclick="importInvoice()">استيراد بيانات</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card border-0 shadow-sm p-3 mb-3">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="small text-muted fw-bold">النوع</label>
+                            <select id="invType" class="form-select bg-white">
+                                <option value="Sales Invoice">فاتورة مبيعات</option>
+                                <option value="Purchase Invoice">فاتورة مشتريات</option>
+                                <option value="Credit Note">مرتجع / إشعار دائن</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                             <label class="small text-muted fw-bold">اسم العميل/المورد</label>
+                             <select id="invContactNameSelect" class="form-select select2" style="width: 100%;"></select>
+                        </div>
+                        <div class="col-md-2">
+                             <label class="small text-muted fw-bold">كود العميل/المورد</label>
+                             <select id="invContactCodeSelect" class="form-select select2" style="width: 100%;"></select>
+                        </div>
+                         <div class="col-md-1 d-flex align-items-end">
+                             <button class="btn btn-outline-primary w-100" onclick="openContactModal()" title="إضافة عميل جديد">+</button>
+                         </div>
+
+                        <div class="col-md-2"><label class="small text-muted fw-bold">التاريخ</label><input type="date" id="invDate" class="form-control bg-white"></div>
+                        <div class="col-md-1"><label class="small text-muted fw-bold">الرقم</label><input type="text" id="invRef" class="form-control bg-light fw-bold text-primary" readonly style="font-size: 11px;"></div>
+                    </div>
+                </div>
+                
+                <div class="card border-0 shadow-sm overflow-hidden mb-3">
+                    <table class="table table-bordered mb-0 align-middle">
+                        <thead class="bg-light text-center">
+                            <tr>
+                                <th width="15%">كود الصنف</th> 
+                                <th width="25%">الصنف</th>
+                                <th width="15%">السعر</th>
+                                <th width="10%">الكمية</th>
+                                <th width="15%">ضريبة (15%)</th>
+                                <th width="15%">الإجمالي</th>
+                                <th width="5%"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="invLines"></tbody>
+                    </table>
+                    <div class="p-2 bg-white"><button class="btn btn-sm btn-outline-primary fw-bold" onclick="addInvLine()"><i class="fa fa-plus"></i> إضافة سطر</button></div>
+                </div>
+
+                <div class="row justify-content-end">
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm p-3">
+                            <div class="d-flex justify-content-between mb-2"><span class="text-muted">المجموع قبل الضريبة:</span><span id="invSubTotal" class="fw-bold">0.00</span></div>
+                            <div class="d-flex justify-content-between mb-2"><span class="text-muted">ضريبة القيمة المضافة:</span><span id="invTax" class="text-danger fw-bold">0.00</span></div>
+                            <div class="border-top pt-2 mt-2 d-flex justify-content-between"><span class="h5 fw-bold">الإجمالي النهائي:</span><span id="invGrandTotal" class="h5 text-primary fw-bold">0.00</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button class="btn btn-success px-4 fw-bold" onclick="saveInvoice()">حفظ الفاتورة</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="itemModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light"><h5 class="modal-title fw-bold">إضافة صنف</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body p-4">
+                <input id="itemCode" class="form-control bg-light mb-3" readonly>
+                <input id="itemNameAr" class="form-control mb-3" placeholder="اسم الصنف (عربي)">
+                <input id="itemNameEn" class="form-control mb-3" placeholder="Name (En)">
+                <input id="itemPrice" type="number" class="form-control mb-3" placeholder="السعر">
+                <button class="btn btn-primary w-100 fw-bold" onclick="saveItem()">حفظ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="contactModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light"><h5 class="modal-title fw-bold">عميل / مورد جديد</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-4"><select id="cType" class="form-select" onchange="generateContactCode()"><option value="Client">عميل</option><option value="Vendor">مورد</option></select></div>
+                    <div class="col-md-4"><input id="cCode" class="form-control bg-light" readonly></div>
+                    <div class="col-md-4"><input id="cName" class="form-control" placeholder="الاسم"></div>
+                    <div class="col-md-6"><input id="cPhone" class="form-control" placeholder="الهاتف"></div>
+                    <div class="col-md-6"><input id="cEmail" class="form-control" placeholder="الإيميل"></div>
+                    <div class="col-md-12"><input id="cAddr" class="form-control" placeholder="العنوان"></div>
+                    <div class="col-md-6"><input id="cTax" class="form-control" placeholder="الرقم الضريبي"></div>
+                    <div class="col-md-6"><input id="cCR" class="form-control" placeholder="رقم السجل التجاري"></div>
+                </div>
+                <button class="btn btn-primary w-100 mt-4 fw-bold" onclick="saveContact()">حفظ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 start-0 p-3">
+    <div id="liveToast" class="toast align-items-center text-white bg-success border-0">
+        <div class="d-flex"><div class="toast-body" id="toastMsg">تم الحفظ بنجاح</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
+    </div>
+</div>
+
+<div id="printArea" class="d-none" dir="rtl">
+    
+    <div class="inv-header">
+        <div class="inv-company-info">
+            <div class="company-name" id="pCompName">اسم الشركة</div>
+            <div class="company-detail" id="pCompAddr">العنوان</div>
+            <div class="company-detail">رقم الجوال: <span id="pCompPhone" dir="ltr"></span></div>
+            <div class="company-detail">البريد: <span id="pCompEmail"></span></div>
+            <div class="company-detail">الرقم الضريبي: <span id="pCompVat" dir="ltr"></span></div>
+            <div class="company-detail">السجل التجاري: <span id="pCompCR" dir="ltr"></span></div>
+        </div>
+        
+        <div class="inv-logo-area">
+            <div class="doc-title" id="pDocTitle">فاتورة ضريبية</div>
+            <img id="pLogo" src="" style="max-height: 100px; max-width: 100%; display:none;">
+        </div>
+
+        <div class="inv-qr-area">
+            <div id="qrcode" style="display: inline-block; border: 1px solid #ddd; padding: 2px;"></div>
+        </div>
+    </div>
+
+    <div class="inv-meta-grid">
+        <div class="meta-box">
+            <div class="meta-header">بيانات العميل</div>
+            <div class="meta-content">
+                <div class="meta-row"><span class="meta-label">الاسم:</span> <span class="meta-val" id="pClientName"></span></div>
+                <div class="meta-row"><span class="meta-label">العنوان:</span> <span class="meta-val" id="pClientAddr"></span></div>
+                <div class="meta-row"><span class="meta-label">الرقم الضريبي:</span> <span class="meta-val" id="pClientTax" dir="ltr"></span></div>
+                <div class="meta-row"><span class="meta-label">السجل التجاري:</span> <span class="meta-val" id="pClientCR" dir="ltr"></span></div>
+            </div>
+        </div>
+        <div class="meta-box">
+            <div class="meta-header">تفاصيل الفاتورة</div>
+            <div class="meta-content">
+                <div class="meta-row"><span class="meta-label">رقم الفاتورة:</span> <span class="meta-val" id="pRef" dir="ltr"></span></div>
+                <div class="meta-row"><span class="meta-label">التاريخ:</span> <span class="meta-val" id="pDate" dir="ltr"></span></div>
+                <div class="meta-row"><span class="meta-label">وقت الإصدار:</span> <span class="meta-val" id="pTime" dir="ltr"></span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="inv-table">
+            <thead>
+                <tr>
+                    <th width="12%">رقم الصنف</th>
+                    <th width="20%">المنتج / الخدمة</th>
+                    <th width="8%">الكمية</th>
+                    <th width="10%">سعر الوحدة</th>
+                    <th width="12%">المبلغ الخاضع</th>
+                    <th width="8%">الضريبة %</th>
+                    <th width="10%">قيمة الضريبة</th>
+                    <th width="15%">المجموع (شامل)</th>
+                </tr>
+            </thead>
+            <tbody id="pLines"></tbody>
+            <tfoot>
+                 <tr style="background-color: #f1f5f9; font-weight: bold;">
+                    <td colspan="2" style="text-align: left; padding-left: 10px; border: 1px solid #94a3b8 !important;">إجمالي الكميات:</td>
+                    <td id="pTotalQty" class="center-cell" style="border: 1px solid #94a3b8 !important;">0</td>
+                    <td colspan="5" style="border: 1px solid #94a3b8 !important;"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="inv-footer">
+        <div class="totals-container">
+            <div class="notes-section">
+                </div>
+            
+            <div class="totals-box">
+                <div class="t-row">
+                    <div class="t-label">إجمالي المبلغ غير شامل الضريبة</div>
+                    <div class="t-val" id="pSub">0.00</div>
+                </div>
+                <div class="t-row">
+                    <div class="t-label">ضريبة القيمة المضافة (15%)</div>
+                    <div class="t-val" id="pTax">0.00</div>
+                </div>
+                <div class="t-row t-final">
+                    <div class="t-label">صافي المستحق</div>
+                    <div class="t-val" id="pTotal">0.00</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-auth.js";
+    import { getDatabase, ref, set, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAHbrer3tMJenFKv0UwgfhaZDqwD84jgHo",
+        authDomain: "accountingdatabase96.firebaseapp.com",
+        databaseURL: "https://accountingdatabase96-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "accountingdatabase96",
+        storageBucket: "accountingdatabase96.firebasestorage.app",
+        messagingSenderId: "381732130416",
+        appId: "1:381732130416:web:97bccdb9b30121c685eeb5"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    let currentUser = null;
+    let data = { profile: {}, contacts: [], items: [], invoices: [], payments: [] };
+    let currentLines = [];
+
+    // --- Helpers ---
+    window.getSaudiDateISO = () => {
+        const d = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Riyadh"}));
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    };
+    window.getSaudiTimeISO = () => new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Riyadh"})).toISOString();
+    const formatMoney = (n) => Number(n).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    window.searchTable = (input, tableId) => {
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById(tableId);
+        const tr = table.getElementsByTagName("tr");
+        for (let i = 0; i < tr.length; i++) {
+            let visible = false;
+            const tds = tr[i].getElementsByTagName("td");
+            for(let j=0; j<tds.length; j++) {
+                if (tds[j].textContent.toUpperCase().indexOf(filter) > -1) {
+                    visible = true;
+                    break;
+                }
+            }
+            tr[i].style.display = visible ? "" : "none";
+        }
+    };
+
+    // --- ZATCA ---
+    function getTLV(tag, value) {
+        const utf8Arr = new TextEncoder().encode(String(value));
+        const combined = new Uint8Array(2 + utf8Arr.length);
+        combined[0] = tag;
+        combined[1] = utf8Arr.length;
+        combined.set(utf8Arr, 2);
+        return combined;
+    }
+    function generateZatcaBase64(seller, vat, time, total, tax) {
+        const b1 = getTLV(1, seller), b2 = getTLV(2, vat), b3 = getTLV(3, time), b4 = getTLV(4, total), b5 = getTLV(5, tax);
+        const all = new Uint8Array(b1.length + b2.length + b3.length + b4.length + b5.length);
+        let offset = 0;
+        [b1, b2, b3, b4, b5].forEach(b => { all.set(b, offset); offset += b.length; });
+        return window.btoa(String.fromCharCode(...all));
+    }
+
+    // --- Auth & Init ---
+    window.toggleAuth = (m) => { document.getElementById('loginForm').style.display = m=='login'?'block':'none'; document.getElementById('registerForm').style.display = m=='register'?'block':'none'; };
+    window.login = () => signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPass').value).catch(e => document.getElementById('authError').innerText = e.message);
+    window.register = () => {
+        createUserWithEmailAndPassword(auth, document.getElementById('regEmail').value, document.getElementById('regPass').value).then((c) => {
+            set(ref(db, `users/${c.user.uid}/profile`), { businessNameAr: document.getElementById('regBusNameAr').value, vat: document.getElementById('regVAT').value });
+        }).catch(e => document.getElementById('authError').innerText = e.message);
+    };
+    window.logout = () => signOut(auth);
+    onAuthStateChanged(auth, u => {
+        currentUser = u;
+        document.getElementById('authSection').style.display = u ? 'none' : 'flex';
+        document.getElementById('appSection').style.display = u ? 'block' : 'none';
+        if (u) { document.getElementById('sidebarUserEmail').innerText = u.email; initData(u.uid); }
+    });
+
+    function initData(uid) {
+        onValue(ref(db, `users/${uid}`), s => {
+            const v = s.val() || {};
+            // Fix Delete Issue: Map object to array preserving keys
+            const contactsMap = v.contacts || {};
+            const contactsArr = Object.keys(contactsMap).map(key => ({
+                ...contactsMap[key],
+                key: key // Preserve firebase key
+            }));
+
+            data = {
+                profile: v.profile || {},
+                contacts: contactsArr,
+                items: Object.values(v.items || {}),
+                invoices: Object.values(v.invoices || {}),
+                payments: Object.values(v.payments || {})
+            };
+            updateUI();
+        });
+    }
+
+    function updateUI() {
+        let sales=0, purchases=0, received=0;
+        data.invoices.forEach(i => { if(i.type==='Sales Invoice') sales+=i.total; else if(i.type==='Purchase Invoice') purchases+=i.total; else sales-=i.total; });
+        data.payments.forEach(p => { if(p.type==='Receipt') received+=Number(p.amount); });
+
+        document.getElementById('dashSales').innerText = sales.toFixed(2);
+        document.getElementById('dashPurchases').innerText = purchases.toFixed(2);
+        document.getElementById('dashReceived').innerText = received.toFixed(2);
+        document.getElementById('dashNet').innerText = (sales-purchases).toFixed(2);
+        document.getElementById('sidebarBusName').innerText = data.profile.businessNameAr || "شركتي";
+
+        renderInvoicesTable(); renderItemsTable(); renderContactsTable(); renderPaymentsTable();
+        populateSelects();
+
+        // Settings Fill
+        document.getElementById('setBusNameAr').value = data.profile.businessNameAr || '';
+        document.getElementById('setBusNameEn').value = data.profile.businessNameEn || '';
+        document.getElementById('setAddr').value = data.profile.address || '';
+        document.getElementById('setVAT').value = data.profile.vat || '';
+        document.getElementById('setCR').value = data.profile.crNumber || ''; 
+        document.getElementById('setPhone').value = data.profile.phone || '';
+        document.getElementById('setEmail').value = data.profile.email || '';
+        if(data.profile.logo) { document.getElementById('logoPreview').src = data.profile.logo; document.getElementById('logoPreview').style.display = 'inline-block'; }
+    }
+
+    // --- UI Helpers ---
+    const showToast = (msg) => { document.getElementById('toastMsg').innerText = msg; new bootstrap.Toast(document.getElementById('liveToast')).show(); };
+    window.showSection = (id) => { document.querySelectorAll('.section-content').forEach(e=>e.style.display='none'); document.getElementById(id).style.display='block'; document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active')); };
+    
+    function populateSelects() {
+        const placeholder = '<option value="">اختر...</option>';
+        const nameOpts = data.contacts.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        
+        document.getElementById('payContact').innerHTML = placeholder + nameOpts;
+        document.getElementById('repContact').innerHTML = placeholder + nameOpts;
+
+        // Populate Select2 Dropdowns (ID as value for both)
+        const nameSelect = document.getElementById('invContactNameSelect');
+        const codeSelect = document.getElementById('invContactCodeSelect');
+        
+        // Clear options but keep placeholder
+        nameSelect.innerHTML = '<option></option>'; 
+        codeSelect.innerHTML = '<option></option>'; 
+
+        data.contacts.forEach(c => {
+            const opt1 = new Option(c.name, c.id, false, false);
+            nameSelect.add(opt1);
+
+            const opt2 = new Option(c.code, c.id, false, false);
+            codeSelect.add(opt2);
+        });
+    }
+
+    // --- Select2 Initialization & Sync Logic ---
+    $(document).ready(function() {
+        // Init Select2 with Bootstrap 5 theme
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'اختر...',
+            allowClear: true,
+            dropdownParent: $('#invoiceModal') // Fix for Modal Z-Index
+        });
+
+        // Sync Logic
+        let isSyncing = false;
+
+        $('#invContactNameSelect').on('change', function() {
+            if (isSyncing) return;
+            isSyncing = true;
+            const val = $(this).val();
+            $('#invContactCodeSelect').val(val).trigger('change');
+            isSyncing = false;
+        });
+
+        $('#invContactCodeSelect').on('change', function() {
+            if (isSyncing) return;
+            isSyncing = true;
+            const val = $(this).val();
+            $('#invContactNameSelect').val(val).trigger('change');
+            isSyncing = false;
+        });
+    });
+
+    // --- Invoices ---
+    function renderInvoicesTable() {
+        const t = document.getElementById('invoicesTable'); t.innerHTML = '';
+        [...data.invoices].sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(i => {
+            const c = data.contacts.find(x => x.id == i.contactId) || {name: 'غير محدد'};
+            const typeClass = i.type==='Sales Invoice'?'success':(i.type==='Credit Note'?'danger':'warning');
+            const typeName = i.type==='Sales Invoice'?'فاتورة مبيعات':(i.type==='Purchase Invoice'?'مشتريات':'مرتجع');
+            t.innerHTML += `<tr>
+                <td class="fw-bold text-primary" dir="ltr">${i.ref}</td>
+                <td>${i.date}</td>
+                <td>${c.name}</td>
+                <td><span class="badge badge-soft-${typeClass}">${typeName}</span></td>
+                <td class="fw-bold">${i.total.toFixed(2)}</td>
+                <td class="no-print">
+                    <button class="btn btn-sm btn-light border" onclick="printInvoice('${i.id}')" title="طباعة"><i class="fa fa-print"></i></button>
+                    <button class="btn btn-sm btn-light border" onclick="createReturn('${i.id}')" title="مرتجع"><i class="fa fa-rotate-left"></i> عكس</button>
+                </td>
+            </tr>`;
+        });
+    }
+
+    window.openInvoiceModal = () => {
+        currentLines = [];
+        document.getElementById('invType').value = 'Sales Invoice';
+        document.getElementById('invDate').value = getSaudiDateISO();
+        
+        // Reset Select2
+        $('#invContactNameSelect').val(null).trigger('change');
+        $('#invContactCodeSelect').val(null).trigger('change');
+        
+        const nextNum = data.invoices.length + 1; 
+        document.getElementById('invRef').value = "INV-" + String(1000 + nextNum);
+        
+        renderInvLines();
+        new bootstrap.Modal(document.getElementById('invoiceModal')).show();
+    };
+
+    window.importInvoice = () => {
+        let r = document.getElementById('importRef').value.trim();
+        let target = data.invoices.find(i => i.ref === r || i.ref === "INV-" + r);
+        if(!target) return alert('غير موجود');
+        
+        document.getElementById('invType').value = target.type;
+        // Populate Select2
+        const c = data.contacts.find(x => x.id === target.contactId);
+        if(c) {
+            $('#invContactNameSelect').val(c.id).trigger('change');
+            // Code syncs automatically via event
+        }
+        
+        currentLines = [...target.lines];
+        renderInvLines();
+        alert('تم الاستيراد');
+    };
+
+    window.addInvLine = () => { currentLines.push({ itemId: '', qty: 1, price: 0 }); renderInvLines(); };
+    window.renderInvLines = () => {
+        const tb = document.getElementById('invLines'); tb.innerHTML = '';
+        let sub = 0, tax = 0;
+        let itemOpts = data.items.map(x => `<option value="${x.id}">${x.nameAr}</option>`).join('');
+        itemOpts = `<option value="">اختر...</option>` + itemOpts;
+
+        currentLines.forEach((l, i) => {
+            const lineTax = l.price * l.qty * 0.15;
+            sub += (l.price * l.qty); tax += lineTax;
+            
+            // Find Item Code
+            const itemObj = data.items.find(x => x.id == l.itemId);
+            const itemCode = itemObj ? itemObj.code : '-';
+
+            tb.innerHTML += `<tr>
+                <td class="bg-light text-center"><small class="fw-bold">${itemCode}</small></td>
+                <td><select class="form-select form-select-sm" onchange="updLine(${i},'id',this.value)">${itemOpts.replace(`value="${l.itemId}"`, `value="${l.itemId}" selected`)}</select></td>
+                <td><input type="number" class="form-control form-control-sm" value="${l.price}" onchange="updLine(${i},'p',this.value)"></td>
+                <td><input type="number" class="form-control form-control-sm" value="${l.qty}" onchange="updLine(${i},'q',this.value)"></td>
+                <td class="text-center small text-muted">${lineTax.toFixed(2)}</td>
+                <td class="text-center fw-bold">${((l.price*l.qty)+lineTax).toFixed(2)}</td>
+                <td class="text-center"><i class="fa fa-times text-danger" style="cursor:pointer" onclick="delLine(${i})"></i></td>
+            </tr>`;
+        });
+        document.getElementById('invSubTotal').innerText = sub.toFixed(2);
+        document.getElementById('invTax').innerText = tax.toFixed(2);
+        document.getElementById('invGrandTotal').innerText = (sub + tax).toFixed(2);
+    };
+    window.updLine = (idx, f, v) => {
+        if(f==='id') { const it=data.items.find(x=>x.id==v); currentLines[idx].itemId=v; currentLines[idx].price=it?it.price:0; }
+        else if(f==='p') currentLines[idx].price=Number(v);
+        else currentLines[idx].qty=Number(v);
+        renderInvLines();
+    };
+    window.delLine = (i) => { currentLines.splice(i, 1); renderInvLines(); };
+
+    window.saveInvoice = () => {
+        // Get value from Select2 (which stores the ID)
+        const cid = $('#invContactNameSelect').val();
+        
+        if(!cid) return alert('يرجى اختيار العميل');
+        if(!currentLines.length) return alert('لا توجد أصناف');
+        
+        const inv = {
+            id: Date.now(), ref: document.getElementById('invRef').value,
+            contactId: cid, type: document.getElementById('invType').value,
+            date: document.getElementById('invDate').value, timestamp: getSaudiTimeISO(),
+            lines: currentLines,
+            subTotal: Number(document.getElementById('invSubTotal').innerText),
+            tax: Number(document.getElementById('invTax').innerText),
+            total: Number(document.getElementById('invGrandTotal').innerText)
+        };
+        
+        const cRef = ref(db, `users/${currentUser.uid}/contacts/${cid}`);
+        const c = data.contacts.find(x=>x.id==cid);
+        let bal = c.balance||0;
+        if(inv.type==='Sales Invoice') bal+=inv.total; else bal-=inv.total;
+        update(cRef, {balance:bal});
+        
+        set(push(ref(db, `users/${currentUser.uid}/invoices`)), inv).then(()=>{
+            bootstrap.Modal.getInstance(document.getElementById('invoiceModal')).hide();
+            showToast("تم الحفظ");
+        });
+    };
+
+    window.createReturn = (id) => {
+        const inv = data.invoices.find(i=>i.id==id);
+        currentLines=[...inv.lines];
+        document.getElementById('invType').value="Credit Note";
+        
+        // Set Select2 Value
+        const c = data.contacts.find(x => x.id === inv.contactId);
+        if(c) {
+             $('#invContactNameSelect').val(c.id).trigger('change');
+        }
+
+        document.getElementById('invDate').value=getSaudiDateISO();
+        
+        const nextNum = data.invoices.length + 1; 
+        document.getElementById('invRef').value="RET-" + String(1000 + nextNum);
+        renderInvLines();
+        new bootstrap.Modal(document.getElementById('invoiceModal')).show();
+    };
+
+    // --- Print ---
+    window.printInvoice = (id) => {
+        const inv = data.invoices.find(i => i.id == id);
+        const c = data.contacts.find(x => x.id == inv.contactId);
+        
+        document.getElementById('pDocTitle').innerText = inv.type === 'Credit Note' ? 'إشعار دائن' : 'فاتورة ضريبية';
+        document.getElementById('pRef').innerText = inv.ref;
+        document.getElementById('pDate').innerText = inv.date;
+        document.getElementById('pTime').innerText = new Date(inv.timestamp).toLocaleTimeString("en-GB", {timeZone: "Asia/Riyadh"}).slice(0,5);
+
+        // Company Info
+        document.getElementById('pCompName').innerText = data.profile.businessNameAr || 'الشركة';
+        document.getElementById('pCompAddr').innerText = data.profile.address || '';
+        document.getElementById('pCompVat').innerText = data.profile.vat || '';
+        document.getElementById('pCompCR').innerText = data.profile.crNumber || ''; 
+        document.getElementById('pCompPhone').innerText = data.profile.phone || '';
+        document.getElementById('pCompEmail').innerText = data.profile.email || '';
+        
+        const logo = document.getElementById('pLogo');
+        if(data.profile.logo) { logo.src = data.profile.logo; logo.style.display = 'block'; } else logo.style.display = 'none';
+
+        // Client Info
+        document.getElementById('pClientName').innerText = c ? c.name : '-';
+        document.getElementById('pClientAddr').innerText = c ? (c.address||'-') : '-';
+        document.getElementById('pClientTax').innerText = c ? (c.taxId||'-') : '-';
+        document.getElementById('pClientCR').innerText = c ? (c.crNumber||'-') : '-';
+
+        // Lines Logic
+        const tb = document.getElementById('pLines'); tb.innerHTML = '';
+        let totalQty = 0;
+        
+        inv.lines.forEach((l) => {
+            const item = data.items.find(x => x.id == l.itemId);
+            const sub = l.price * l.qty;
+            const tax = sub * 0.15;
+            const total = sub + tax;
+            totalQty += Number(l.qty);
+            
+            tb.innerHTML += `
+            <tr>
+                <td class="center-cell">${item ? item.code : '-'}</td>
+                <td style="text-align:right;">${item ? item.nameAr : '-'}</td>
+                <td class="center-cell">${l.qty}</td>
+                <td class="num-cell">${formatMoney(l.price)}</td>
+                <td class="num-cell">${formatMoney(sub)}</td>
+                <td class="center-cell">15%</td>
+                <td class="num-cell">${formatMoney(tax)}</td>
+                <td class="num-cell" style="font-weight:bold;">${formatMoney(total)}</td>
+            </tr>`;
+        });
+        document.getElementById('pTotalQty').innerText = totalQty;
+
+        // Totals
+        document.getElementById('pSub').innerText = formatMoney(inv.subTotal);
+        document.getElementById('pTax').innerText = formatMoney(inv.tax);
+        document.getElementById('pTotal').innerText = formatMoney(inv.total);
+
+        // QR Code
+        document.getElementById('qrcode').innerHTML = ""; 
+        new QRCode(document.getElementById("qrcode"), { 
+            text: generateZatcaBase64(data.profile.businessNameAr||'Co', data.profile.vat||'0', inv.timestamp, inv.total.toFixed(2), inv.tax.toFixed(2)), 
+            width: 120, height: 120 
+        });
+
+        setTimeout(() => window.print(), 350);
+    };
+
+    // --- Other Modules ---
+    window.openContactModal = () => {
+        ['cName','cPhone','cEmail','cAddr','cTax','cCR'].forEach(id=>document.getElementById(id).value='');
+        document.getElementById('cType').value='Client'; generateContactCode();
+        new bootstrap.Modal(document.getElementById('contactModal')).show();
+    };
+    window.generateContactCode = () => {
+        const t = document.getElementById('cType').value;
+        const c = data.contacts.length + 1;
+        document.getElementById('cCode').value = (t==='Client'?'C':'V') + String(c).padStart(5,'0');
+    };
+    window.saveContact = () => {
+        const obj = {
+            id: Date.now(), code: document.getElementById('cCode').value,
+            name: document.getElementById('cName').value, type: document.getElementById('cType').value,
+            phone: document.getElementById('cPhone').value, email: document.getElementById('cEmail').value,
+            address: document.getElementById('cAddr').value, taxId: document.getElementById('cTax').value,
+            crNumber: document.getElementById('cCR').value, 
+            balance: 0
+        };
+        if(!obj.name) return alert('الاسم مطلوب');
+        set(push(ref(db, `users/${currentUser.uid}/contacts`)), obj).then(()=>{
+             bootstrap.Modal.getInstance(document.getElementById('contactModal')).hide(); showToast("تم الحفظ");
+        });
+    };
+    
+    // Items
+    window.openItemModal = () => { document.getElementById('itemCode').value="ITM-"+String(data.items.length+1).padStart(4,'0'); document.getElementById('itemNameAr').value=''; document.getElementById('itemPrice').value=''; new bootstrap.Modal(document.getElementById('itemModal')).show(); };
+    window.saveItem = () => {
+        const obj = { id:Date.now(), code:document.getElementById('itemCode').value, nameAr:document.getElementById('itemNameAr').value, nameEn:document.getElementById('itemNameEn').value, price:Number(document.getElementById('itemPrice').value) };
+        set(push(ref(db, `users/${currentUser.uid}/items`)), obj).then(()=>{ bootstrap.Modal.getInstance(document.getElementById('itemModal')).hide(); showToast("تم الحفظ"); });
+    };
+
+    // Settings
+    window.saveSettings = () => {
+        const save = (l) => {
+            const d = { 
+                businessNameAr: document.getElementById('setBusNameAr').value, 
+                businessNameEn: document.getElementById('setBusNameEn').value,
+                address: document.getElementById('setAddr').value, 
+                vat: document.getElementById('setVAT').value,
+                crNumber: document.getElementById('setCR').value, 
+                phone: document.getElementById('setPhone').value, email: document.getElementById('setEmail').value 
+            };
+            if(l) d.logo = l;
+            update(ref(db, `users/${currentUser.uid}/profile`), d).then(()=>showToast("تم الحفظ"));
+        };
+        const f = document.getElementById('logoInput').files[0];
+        if(f) { const r = new FileReader(); r.onload=e=>save(e.target.result); r.readAsDataURL(f); } else save(null);
+    };
+
+    // Helper Renders
+    function renderContactsTable() {
+        const t = document.getElementById('contactsTable'); t.innerHTML='';
+        data.contacts.forEach(c => t.innerHTML += `<tr><td>${c.code}</td><td>${c.name}</td><td>${c.type}</td><td>${c.phone}</td><td class="${c.balance>=0?'text-success':'text-danger'}">${Number(c.balance).toFixed(2)}</td><td class="no-print"><button class="btn btn-sm btn-outline-danger" onclick="deleteContact('${c.key}')"><i class="fa fa-trash"></i></button></td></tr>`);
+    }
+    // Delete Contact (Updated to use Firebase Key)
+    window.deleteContact = (key) => { 
+        if(!currentUser) return;
+        if(confirm('هل أنت متأكد من حذف هذا العميل/المورد؟')) {
+            remove(ref(db, `users/${currentUser.uid}/contacts/${key}`)).then(() => {
+                showToast('تم الحذف بنجاح');
+            }).catch(err => alert(err.message));
+        }
+    };
+
+    function renderItemsTable() { const t=document.getElementById('itemsTable'); t.innerHTML=''; data.items.forEach(i=>t.innerHTML+=`<tr><td>${i.code}</td><td>${i.nameAr}</td><td>${i.nameEn}</td><td>${i.price}</td></tr>`); }
+    function renderPaymentsTable() { const t=document.getElementById('paymentsTable'); t.innerHTML=''; data.payments.slice(-10).reverse().forEach(p=>t.innerHTML+=`<tr><td>${p.id.toString().slice(-4)}</td><td>${p.date}</td><td>-</td><td>${p.type}</td><td>${p.amount}</td></tr>`); }
+    window.savePayment = () => {
+        const p = { id:Date.now(), contactId:document.getElementById('payContact').value, type:document.getElementById('payType').value, date:document.getElementById('payDate').value, amount:document.getElementById('payAmount').value };
+        if(!p.contactId) return;
+        const cRef = ref(db, `users/${currentUser.uid}/contacts/${p.contactId}`);
+        const c = data.contacts.find(x=>x.id==p.contactId);
+        let b = c.balance||0; if(p.type==='Receipt') b-=Number(p.amount); else b+=Number(p.amount);
+        update(cRef, {balance:b});
+        set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>showToast("تم الحفظ"));
+    };
+    
+    // SOA
+    window.generateSOA = () => {
+        const cid = document.getElementById('repContact').value;
+        if(!cid) return;
+        document.getElementById('soaName').innerText = data.contacts.find(x=>x.id==cid).name;
+        let bal=0;
+        const tb = document.getElementById('soaTable'); tb.innerHTML='';
+        data.invoices.filter(i=>i.contactId==cid).forEach(x=>{ bal+=(x.total); tb.innerHTML+=`<tr><td>${x.date}</td><td>فاتورة ${x.ref}</td><td>${x.total}</td><td>0</td><td>${bal}</td></tr>`; });
+        document.getElementById('soaResult').style.display='block';
+    };
+    window.printSOA = () => window.print();
+    window.exportToExcel = (id, name) => XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById(id), {sheet:"Sheet1"}), name+".xlsx");
+
+</script>
+</body>
+</html>

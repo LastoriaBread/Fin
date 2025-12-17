@@ -39,7 +39,7 @@
             /* Print Colors */
             --print-primary: #1e3a8a; 
             --print-header-bg: #eff6ff;
-            --print-border: #000000;
+            --print-border: #cbd5e1; /* Softer border for print */
         }
 
         body {
@@ -130,11 +130,10 @@
         .stats-card .icon-box { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3) !important; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
         .stats-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.15); }
 
-        /* Table Styling - Zebra & Accounting Look */
+        /* Table Styling */
         .custom-table-container { padding: 20px; border: 1px solid #e2e8f0 !important; }
         .table { margin-bottom: 0; }
         
-        /* Floating Header */
         .table thead th { 
             background-color: #f1f5f9; 
             color: #475569; 
@@ -155,21 +154,11 @@
             font-weight: 500;
         }
 
-        /* Zebra Striping Logic (Excel Style) */
-        .table tbody tr:nth-of-type(odd) {
-            background-color: #ffffff;
-        }
-        .table tbody tr:nth-of-type(even) {
-            background-color: rgba(79, 70, 229, 0.04); /* Very light Indigo */
-        }
+        .table tbody tr:nth-of-type(odd) { background-color: #ffffff; }
+        .table tbody tr:nth-of-type(even) { background-color: rgba(79, 70, 229, 0.04); }
         
-        /* Hover Effect */
-        .table-hover tbody tr:hover { 
-            background-color: rgba(79, 70, 229, 0.1) !important; 
-            transition: background-color 0.2s;
-        }
+        .table-hover tbody tr:hover { background-color: rgba(79, 70, 229, 0.1) !important; transition: background-color 0.2s; }
 
-        /* Search Box */
         .search-box-container { position: relative; max-width: 400px; margin-bottom: 20px; width: 100%; }
         .search-box-container i { position: absolute; left: 15px; top: 12px; color: var(--primary-color); }
         .search-box-container input { padding-left: 45px; border-radius: 12px; height: 45px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
@@ -186,11 +175,21 @@
         .modal-body { padding: 30px; }
         .modal-footer { border-top: 1px solid #f1f5f9; padding: 20px 30px; }
 
+        /* --- MOBILE OPTIMIZATION --- */
         @media (max-width: 768px) {
             .sidebar { transform: translateX(100%); width: 280px; }
             .sidebar.active { transform: translateX(0); }
-            .main-content { margin-right: 0; padding: 15px; padding-top: 80px; }
-            .col-md-3 { margin-bottom: 15px; }
+            .main-content { margin-right: 0; padding: 20px; padding-top: 80px; width: 100%; }
+            .col-md-3, .col-md-4, .col-md-6 { margin-bottom: 15px; width: 100%; }
+            .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .modal-body { padding: 15px; }
+            .modal-header { padding: 15px; }
+            .btn { width: 100%; margin-bottom: 5px; padding: 12px; }
+            .form-control, .form-select { height: auto; padding: 12px; }
+            .search-box-container { max-width: 100%; }
+            #invLines input, #invLines select { font-size: 14px; padding: 5px; }
+            .d-flex.justify-content-between { flex-direction: column; gap: 10px; align-items: stretch; }
+            .d-flex.justify-content-between > * { width: 100%; text-align: center; }
         }
         
         .mobile-toggle { background: var(--primary-color); color: white; border: none !important; border-radius: 12px; width: 50px; height: 50px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.4); display: none; position: fixed; top: 15px; left: 15px; z-index: 1060; align-items: center; justify-content: center; }
@@ -202,7 +201,7 @@
         .badge-soft-danger { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca !important; }
         .badge-soft-warning { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a !important; }
 
-        /* --- PRINT STYLES --- */
+        /* --- MODERN PRINT STYLES --- */
         @media print {
             .sidebar, .no-print, .btn, .modal, .toast-container, .mobile-toggle, .overlay, .main-content > div:not(#printArea) { display: none !important; }
             .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; background: white; }
@@ -211,83 +210,92 @@
 
             #printArea { display: block !important; width: 100%; background: white; font-family: 'Cairo', sans-serif; color: #000; padding: 10mm; box-sizing: border-box; }
             
-            .inv-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 15px; border-bottom: 2px solid var(--print-primary) !important; margin-bottom: 15px; }
+            /* Header */
+            .inv-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 2px solid var(--print-primary) !important; margin-bottom: 25px; }
             .inv-company-info { text-align: right; width: 35%; }
             .inv-logo-area { text-align: center; width: 30%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
             .inv-qr-area { text-align: left; width: 35%; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
             
-            .company-name { font-size: 18px; font-weight: 800; color: var(--print-primary); margin-bottom: 5px; }
-            .company-detail { font-size: 11px; margin-bottom: 2px; color: #444; }
-            .doc-title { color: var(--print-primary); font-weight: 800; font-size: 16px; margin-bottom: 5px; border: 2px solid var(--print-primary) !important; padding: 2px 10px; border-radius: 4px; display: inline-block; }
+            .company-name { font-size: 20px; font-weight: 800; color: var(--print-primary); margin-bottom: 5px; }
+            .company-detail { font-size: 11px; margin-bottom: 3px; color: #555; }
+            .doc-title { color: var(--print-primary); font-weight: 800; font-size: 18px; margin-bottom: 10px; border: 2px solid var(--print-primary) !important; padding: 4px 15px; border-radius: 6px; display: inline-block; background: var(--print-header-bg); }
 
-            .inv-meta-grid { display: flex; gap: 15px; margin-bottom: 15px; }
-            .meta-box { flex: 1; border: 1px solid #000 !important; border-radius: 6px; overflow: hidden; } 
-            .meta-header { background-color: var(--print-header-bg); padding: 5px 10px; font-size: 12px; font-weight: 700; color: var(--print-primary); border-bottom: 1px solid #000 !important; }
-            .meta-content { padding: 8px 10px; }
-            .meta-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
-            .meta-label { color: #666; }
-            .meta-val { font-weight: 700; color: #000; font-family: 'Segoe UI', sans-serif; }
+            /* Meta Boxes */
+            .inv-meta-grid { display: flex; gap: 20px; margin-bottom: 25px; }
+            .meta-box { flex: 1; border: 1px solid #e2e8f0 !important; border-radius: 8px; overflow: hidden; background: #fff; } 
+            .meta-header { background-color: var(--print-header-bg); padding: 8px 12px; font-size: 12px; font-weight: 700; color: var(--print-primary); border-bottom: 1px solid #e2e8f0 !important; }
+            .meta-content { padding: 10px 12px; }
+            .meta-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; }
+            .meta-label { color: #64748b; font-weight: 600; }
+            .meta-val { font-weight: 700; color: #1e293b; font-family: 'Segoe UI', sans-serif; }
 
-            .table-wrapper { flex-grow: 1; margin-bottom: 10px; }
-            .inv-table { width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; border: 2px solid #000 !important; }
-            .inv-table th { background-color: var(--print-primary) !important; color: white !important; padding: 6px 4px; text-align: center; font-weight: bold; border: 1px solid #000 !important; }
-            .inv-table td { border: 1px solid #000 !important; padding: 4px; color: #000; }
+            /* Table */
+            .table-wrapper { flex-grow: 1; margin-bottom: 20px; }
+            .inv-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px; table-layout: fixed; border: 1px solid #cbd5e1 !important; border-radius: 8px; overflow: hidden; }
+            .inv-table th { background-color: var(--print-primary) !important; color: white !important; padding: 10px 8px; text-align: center; font-weight: bold; border-bottom: 1px solid #cbd5e1 !important; }
+            .inv-table td { border-bottom: 1px solid #e2e8f0 !important; padding: 8px; color: #334155; border-left: 1px solid #f1f5f9; }
+            .inv-table tr:last-child td { border-bottom: none; }
+            .inv-table td:first-child { border-left: none; }
             
-            .num-cell { text-align: right; font-family: 'Segoe UI', sans-serif; font-weight: 600; font-variant-numeric: tabular-nums; direction: ltr; padding-right: 8px !important; }
+            .num-cell { text-align: right; font-family: 'Segoe UI', sans-serif; font-weight: 600; font-variant-numeric: tabular-nums; direction: ltr; padding-right: 12px !important; }
             .center-cell { text-align: center; }
             .inv-table tr:nth-child(even) { background-color: #f8fafc; }
             
-            .inv-footer { margin-top: 20px; page-break-inside: avoid; }
-            .totals-container { display: flex; justify-content: flex-end; gap: 15px; }
-            .notes-section { flex: 1; }
+            /* Footer & Totals */
+            .inv-footer { margin-top: 10px; page-break-inside: avoid; }
+            .totals-container { display: flex; justify-content: flex-end; gap: 20px; align-items: flex-start; }
+            .notes-section { flex: 1; font-size: 10px; color: #777; padding-top: 10px; }
             
-            /* --- UPDATED: TOTALS BOX HIGH CONTRAST PRINT --- */
+            /* --- IMPROVED MODERN TOTALS BOX --- */
             .totals-box { 
-                width: 320px; 
-                border: 2px solid #000 !important; 
-                overflow: hidden; 
-                background: #ffffff !important; /* Force White Background */
+                width: 340px; 
+                background: #ffffff !important; 
+                border-radius: 12px;
+                border: 1px solid #e2e8f0 !important;
+                overflow: hidden;
+                box-shadow: none;
             }
             
             .t-row { 
                 display: flex; 
-                border-bottom: 1px solid #000 !important; 
-                font-size: 12px; /* Slightly larger for clarity */
-            }
-            .t-row:last-child { 
-                border-bottom: none !important; 
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 15px; 
+                border-bottom: 1px solid #f1f5f9 !important;
+                background: #ffffff;
             }
             
             .t-label { 
-                width: 60%; 
-                background: #ffffff !important; /* WHITE Background */
-                padding: 8px 10px; 
-                font-weight: 800 !important;    /* BOLD */
-                color: #000 !important;         /* BLACK Text */
-                border-left: 1px solid #000 !important; /* Vertical Grid Line */
+                font-weight: 600;    
+                color: #64748b !important;
+                font-size: 11px;
             }
             
             .t-val { 
-                width: 40%; 
-                padding: 8px 10px; 
                 text-align: right; 
-                font-weight: 800 !important;    /* BOLD */
-                color: #000 !important;         /* BLACK Text */
-                background: #ffffff !important;
+                font-weight: 700 !important;    
+                color: #1e293b !important;         
                 font-family: 'Segoe UI', sans-serif; 
                 direction: ltr; 
+                font-size: 12px;
             }
             
-            /* High Contrast Final Total */
+            /* Final Total - Modern Highlight */
             .t-final { 
-                background-color: #ffffff !important; /* White Background */
-                color: #000 !important;
-                border-top: 2px solid #000 !important; /* Distinct Line */
+                background-color: var(--print-primary) !important; /* Blue Background */
+                color: white !important;
+                border-top: none !important;
+                padding: 15px;
             }
-            .t-final .t-label, .t-final .t-val { 
-                background: #ffffff !important; 
-                color: #000 !important; 
-                font-size: 14px;
+            .t-final .t-label { 
+                color: rgba(255,255,255,0.9) !important; 
+                font-size: 13px;
+                font-weight: 700;
+            }
+            .t-final .t-val { 
+                color: white !important; 
+                font-size: 18px;
+                font-weight: 800;
             }
             
             body { zoom: 95%; } 
@@ -672,6 +680,11 @@
                 </div>
 
                 <div class="row justify-content-end">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small fw-bold">ملاحظات داخلية (تظهر في كشف الحساب فقط)</label>
+                        <input type="text" id="invInternalNote" class="form-control" placeholder="أدخل أي ملاحظات هنا...">
+                    </div>
+
                     <div class="col-md-4">
                         <div class="card p-4 bg-white border">
                             <div class="d-flex justify-content-between mb-2"><span class="text-muted fw-bold">المجموع قبل الضريبة:</span><span id="invSubTotal" class="fw-bold">0.00</span></div>
@@ -693,7 +706,7 @@
 </div>
 
 <div class="modal fade" id="itemModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
         <div class="modal-content">
             <div class="modal-header bg-light"><h5 class="modal-title fw-bold" id="itemModalTitle">إضافة صنف</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body p-4">
@@ -811,9 +824,9 @@
             <tbody id="pLines"></tbody>
             <tfoot>
                  <tr style="background-color: #f1f5f9; font-weight: bold;">
-                    <td colspan="2" style="text-align: left; padding-left: 10px; border: 1px solid #000 !important;">إجمالي الكميات:</td>
-                    <td id="pTotalQty" class="center-cell" style="border: 1px solid #000 !important;">0</td>
-                    <td colspan="5" style="border: 1px solid #000 !important;"></td>
+                    <td colspan="2" style="text-align: left; padding-left: 10px; border-top: 1px solid #cbd5e1 !important;">إجمالي الكميات:</td>
+                    <td id="pTotalQty" class="center-cell" style="border-top: 1px solid #cbd5e1 !important;">0</td>
+                    <td colspan="5" style="border-top: 1px solid #cbd5e1 !important;"></td>
                 </tr>
             </tfoot>
         </table>
@@ -1109,6 +1122,7 @@
         currentLines = [];
         document.getElementById('invType').value = 'Sales Invoice';
         document.getElementById('invDate').value = getSaudiDateISO();
+        document.getElementById('invInternalNote').value = ''; // Reset Note
         
         // Reset Select2
         $('#invContactNameSelect').val(null).trigger('change');
@@ -1146,7 +1160,7 @@
         const tb = document.getElementById('invLines'); tb.innerHTML = '';
         let sub = 0, tax = 0;
 
-        // --- Filter Items Logic (The requested feature) ---
+        // --- Filter Items Logic ---
         const currentContactId = $('#invContactNameSelect').val();
         
         // Show general items (no linkedContactId) OR items linked specifically to this contact
@@ -1226,6 +1240,9 @@
         const rawSub = parseFloat(document.getElementById('invSubTotal').innerText.replace(/,/g, ''));
         const rawTax = parseFloat(document.getElementById('invTax').innerText.replace(/,/g, ''));
         const rawTotal = parseFloat(document.getElementById('invGrandTotal').innerText.replace(/,/g, ''));
+        
+        // Capture Note
+        const note = document.getElementById('invInternalNote').value;
 
         const inv = {
             id: Date.now(), ref: document.getElementById('invRef').value,
@@ -1235,7 +1252,8 @@
             subTotal: rawSub,
             tax: rawTax,
             total: rawTotal,
-            targetAddress: finalAddress // Saving specific address
+            targetAddress: finalAddress,
+            internalNote: note // SAVE NOTE
         };
         
         const cRef = ref(db, `users/${currentUser.uid}/contacts/${cid}`);
@@ -1261,6 +1279,7 @@
         }
 
         document.getElementById('invDate').value=getSaudiDateISO();
+        document.getElementById('invInternalNote').value = inv.internalNote || ''; // Keep note if exists
         
         const nextNum = data.invoices.length + 1; 
         document.getElementById('invRef').value="RET-" + String(1000 + nextNum);
@@ -1656,7 +1675,17 @@
         document.getElementById('soaName').innerText = data.contacts.find(x=>x.id==cid).name;
         let bal=0;
         const tb = document.getElementById('soaTable'); tb.innerHTML='';
-        data.invoices.filter(i=>i.contactId==cid).forEach(x=>{ bal+=(x.total); tb.innerHTML+=`<tr><td>${x.date}</td><td>فاتورة ${x.ref}</td><td>${formatMoney(x.total)}</td><td>0</td><td>${formatMoney(bal)}</td></tr>`; });
+        
+        // Updated SOA to include internal Note if available
+        data.invoices.filter(i=>i.contactId==cid).forEach(x=>{ 
+            bal+=(x.total); 
+            let description = `فاتورة ${x.ref}`;
+            if (x.internalNote) {
+                description += ` <br><span class="text-muted small">(${x.internalNote})</span>`;
+            }
+
+            tb.innerHTML+=`<tr><td>${x.date}</td><td>${description}</td><td>${formatMoney(x.total)}</td><td>0</td><td>${formatMoney(bal)}</td></tr>`; 
+        });
         document.getElementById('soaResult').style.display='block';
     };
     window.printSOA = () => window.print();

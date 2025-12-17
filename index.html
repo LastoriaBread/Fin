@@ -39,7 +39,7 @@
             /* Print Colors */
             --print-primary: #1e3a8a; 
             --print-header-bg: #eff6ff;
-            --print-border: #000000; /* Changed to black for sharper B&W print */
+            --print-border: #000000;
         }
 
         body {
@@ -221,7 +221,7 @@
             .doc-title { color: var(--print-primary); font-weight: 800; font-size: 16px; margin-bottom: 5px; border: 2px solid var(--print-primary) !important; padding: 2px 10px; border-radius: 4px; display: inline-block; }
 
             .inv-meta-grid { display: flex; gap: 15px; margin-bottom: 15px; }
-            .meta-box { flex: 1; border: 1px solid #000 !important; border-radius: 6px; overflow: hidden; } /* Sharper border for print */
+            .meta-box { flex: 1; border: 1px solid #000 !important; border-radius: 6px; overflow: hidden; } 
             .meta-header { background-color: var(--print-header-bg); padding: 5px 10px; font-size: 12px; font-weight: 700; color: var(--print-primary); border-bottom: 1px solid #000 !important; }
             .meta-content { padding: 8px 10px; }
             .meta-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
@@ -241,29 +241,55 @@
             .totals-container { display: flex; justify-content: flex-end; gap: 15px; }
             .notes-section { flex: 1; }
             
-            /* FIXED: Totals Box Print Styling */
+            /* --- UPDATED: TOTALS BOX HIGH CONTRAST PRINT --- */
             .totals-box { 
                 width: 320px; 
-                border: 2px solid #000 !important; /* Force black border for B&W safety */
-                border-radius: 6px; 
+                border: 2px solid #000 !important; 
                 overflow: hidden; 
+                background: #ffffff !important; /* Force White Background */
             }
             
             .t-row { 
                 display: flex; 
-                border-bottom: 1px solid #000 !important; /* Force black divider */
-                font-size: 11px; 
+                border-bottom: 1px solid #000 !important; 
+                font-size: 12px; /* Slightly larger for clarity */
             }
             .t-row:last-child { 
-                border-bottom: none !important; /* Remove line from last item to prevent overflow line */
+                border-bottom: none !important; 
             }
             
-            .t-label { width: 60%; background: #f8fafc; padding: 5px 10px; font-weight: 700; color: #333; }
-            .t-val { width: 40%; padding: 5px 10px; text-align: right; font-weight: 700; font-family: 'Segoe UI', sans-serif; direction: ltr; }
+            .t-label { 
+                width: 60%; 
+                background: #ffffff !important; /* WHITE Background */
+                padding: 8px 10px; 
+                font-weight: 800 !important;    /* BOLD */
+                color: #000 !important;         /* BLACK Text */
+                border-left: 1px solid #000 !important; /* Vertical Grid Line */
+            }
             
-            .t-final { background-color: var(--print-primary); color: white; }
-            .t-final .t-label { background: transparent; color: white; }
-            .t-final .t-val { color: white; font-size: 14px; }
+            .t-val { 
+                width: 40%; 
+                padding: 8px 10px; 
+                text-align: right; 
+                font-weight: 800 !important;    /* BOLD */
+                color: #000 !important;         /* BLACK Text */
+                background: #ffffff !important;
+                font-family: 'Segoe UI', sans-serif; 
+                direction: ltr; 
+            }
+            
+            /* High Contrast Final Total */
+            .t-final { 
+                background-color: #ffffff !important; /* White Background */
+                color: #000 !important;
+                border-top: 2px solid #000 !important; /* Distinct Line */
+            }
+            .t-final .t-label, .t-final .t-val { 
+                background: #ffffff !important; 
+                color: #000 !important; 
+                font-size: 14px;
+            }
+            
             body { zoom: 95%; } 
         }
     </style>
@@ -459,6 +485,7 @@
                                 <th>اسم الصنف (عربي)</th>
                                 <th>Name (En)</th>
                                 <th>السعر</th>
+                                <th>مخصص لـ</th>
                                 <th class="no-print">إجراءات</th>
                             </tr>
                         </thead>
@@ -676,8 +703,15 @@
                 <label class="form-label text-muted small fw-bold">الاسم</label>
                 <input id="itemNameAr" class="form-control mb-3" placeholder="اسم الصنف (عربي)">
                 <input id="itemNameEn" class="form-control mb-3" placeholder="Name (En)">
-                <label class="form-label text-muted small fw-bold">سعر البيع</label>
+                
+                <label class="form-label text-muted small fw-bold">سعر البيع الافتراضي</label>
                 <input id="itemPrice" type="number" class="form-control mb-3 fw-bold text-primary" placeholder="0.00">
+                
+                <hr class="my-3">
+                <label class="form-label text-muted small fw-bold text-success"><i class="fa fa-link"></i> ربط بعميل محدد (سعر خاص)</label>
+                <select id="itemLinkedContact" class="form-select mb-2"></select>
+                <input id="itemSpecialPrice" type="number" class="form-control mb-3 fw-bold text-success" placeholder="السعر الخاص لهذا العميل">
+                
                 <button class="btn btn-primary w-100 fw-bold mt-2" onclick="saveItem()">حفظ البيانات</button>
             </div>
         </div>
@@ -961,6 +995,9 @@
         
         document.getElementById('payContact').innerHTML = placeholder + nameOpts;
         document.getElementById('repContact').innerHTML = placeholder + nameOpts;
+        
+        // Populate "Linked Contact" in Item Modal
+        document.getElementById('itemLinkedContact').innerHTML = '<option value="">-- عام (بدون تخصيص) --</option>' + nameOpts;
 
         // Populate Select2 Dropdowns (ID as value for both)
         const nameSelect = document.getElementById('invContactNameSelect');
@@ -1000,6 +1037,9 @@
             
             // Logic for Branches
             updateBranchSelect(val);
+            
+            // RE-RENDER Invoice Lines to filter Items based on new Client
+            renderInvLines();
 
             isSyncing = false;
         });
@@ -1105,7 +1145,20 @@
     window.renderInvLines = () => {
         const tb = document.getElementById('invLines'); tb.innerHTML = '';
         let sub = 0, tax = 0;
-        let itemOpts = data.items.map(x => `<option value="${x.id}">${x.nameAr}</option>`).join('');
+
+        // --- Filter Items Logic (The requested feature) ---
+        const currentContactId = $('#invContactNameSelect').val();
+        
+        // Show general items (no linkedContactId) OR items linked specifically to this contact
+        const validItems = data.items.filter(item => {
+            return !item.linkedContactId || (item.linkedContactId == currentContactId);
+        });
+
+        let itemOpts = validItems.map(x => {
+            let nameDisplay = x.nameAr;
+            if(x.linkedContactId) nameDisplay += ' (مخصص)'; // Visual indicator
+            return `<option value="${x.id}">${nameDisplay}</option>`;
+        }).join('');
         itemOpts = `<option value="">اختر...</option>` + itemOpts;
 
         currentLines.forEach((l, i) => {
@@ -1132,7 +1185,22 @@
         document.getElementById('invGrandTotal').innerText = formatMoney(sub + tax);
     };
     window.updLine = (idx, f, v) => {
-        if(f==='id') { const it=data.items.find(x=>x.id==v); currentLines[idx].itemId=v; currentLines[idx].price=it?it.price:0; }
+        if(f==='id') { 
+            const it=data.items.find(x=>x.id==v); 
+            currentLines[idx].itemId=v; 
+            
+            // Logic: Check if there is a special price linked to this item
+            if(it) {
+                 // Check if it has a linkedContact and specialPrice
+                 if(it.linkedContactId && it.specialPrice) {
+                     currentLines[idx].price = Number(it.specialPrice);
+                 } else {
+                     currentLines[idx].price = Number(it.price); 
+                 }
+            } else {
+                currentLines[idx].price = 0;
+            }
+        }
         else if(f==='p') currentLines[idx].price=Number(v);
         else currentLines[idx].qty=Number(v);
         renderInvLines();
@@ -1380,6 +1448,8 @@
     function renderItemsTable() { 
         const t=document.getElementById('itemsTable'); t.innerHTML=''; 
         data.items.forEach(i => {
+            const linkedName = i.linkedContactId ? (data.contacts.find(c=>c.id==i.linkedContactId)?.name || 'غير موجود') : '-';
+            
             // Applied formatMoney to Price
             t.innerHTML += `
             <tr>
@@ -1387,6 +1457,7 @@
                 <td class="fw-bold">${i.nameAr}</td>
                 <td>${i.nameEn}</td>
                 <td class="text-primary fw-bold" dir="ltr">${formatMoney(i.price)}</td>
+                <td class="small">${linkedName}</td>
                 <td class="no-print">
                     <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditItem('${i.key}')"><i class="fa fa-edit"></i></button>
                     <button class="btn btn-sm btn-outline-danger" onclick="deleteItem('${i.key}')"><i class="fa fa-trash"></i></button>
@@ -1403,6 +1474,8 @@
         document.getElementById('itemNameAr').value = ''; 
         document.getElementById('itemNameEn').value = '';
         document.getElementById('itemPrice').value = ''; 
+        document.getElementById('itemLinkedContact').value = ''; 
+        document.getElementById('itemSpecialPrice').value = '';
         new bootstrap.Modal(document.getElementById('itemModal')).show(); 
     };
 
@@ -1416,6 +1489,8 @@
         document.getElementById('itemNameAr').value = item.nameAr;
         document.getElementById('itemNameEn').value = item.nameEn;
         document.getElementById('itemPrice').value = item.price;
+        document.getElementById('itemLinkedContact').value = item.linkedContactId || '';
+        document.getElementById('itemSpecialPrice').value = item.specialPrice || '';
         new bootstrap.Modal(document.getElementById('itemModal')).show();
     };
 
@@ -1427,7 +1502,10 @@
             code: document.getElementById('itemCode').value, 
             nameAr: document.getElementById('itemNameAr').value, 
             nameEn: document.getElementById('itemNameEn').value, 
-            price: Number(document.getElementById('itemPrice').value) 
+            price: Number(document.getElementById('itemPrice').value),
+            // New Linked Data
+            linkedContactId: document.getElementById('itemLinkedContact').value,
+            specialPrice: document.getElementById('itemSpecialPrice').value
         };
 
         if (key) {

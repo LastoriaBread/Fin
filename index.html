@@ -299,6 +299,53 @@
             }
             
             body { zoom: 95%; } 
+
+            /* --- HIGH CONTRAST PRINT MODE --- */
+            body.print-high-contrast * {
+                color: #000000 !important;
+                border-color: #000000 !important;
+                text-shadow: none !important;
+            }
+
+            body.print-high-contrast .inv-header,
+            body.print-high-contrast .meta-header,
+            body.print-high-contrast .inv-table th,
+            body.print-high-contrast .t-final,
+            body.print-high-contrast .doc-title {
+                background-color: #ffffff !important;
+                background: none !important;
+                color: #000000 !important;
+            }
+
+            body.print-high-contrast .inv-table th,
+            body.print-high-contrast .inv-table td,
+            body.print-high-contrast .meta-box,
+            body.print-high-contrast .totals-box,
+            body.print-high-contrast .t-row,
+            body.print-high-contrast .doc-title {
+                border: 1px solid #000000 !important;
+            }
+            
+            body.print-high-contrast .inv-table th {
+                border-bottom: 2px solid #000000 !important;
+            }
+
+            /* FIX: Ensure all text in High Contrast is Black, including totals */
+            body.print-high-contrast .company-name,
+            body.print-high-contrast .meta-label,
+            body.print-high-contrast .t-label,
+            body.print-high-contrast .company-detail,
+            body.print-high-contrast .notes-section,
+            body.print-high-contrast .t-final .t-label,
+            body.print-high-contrast .t-final .t-val {
+                color: #000000 !important;
+                opacity: 1 !important;
+            }
+
+            /* Add top border to final total to separate it in B&W mode */
+            body.print-high-contrast .t-final {
+                border-top: 2px solid #000000 !important;
+            }
         }
     </style>
 </head>
@@ -1111,7 +1158,8 @@
                 <td><span class="badge badge-soft-${typeClass}">${typeName}</span></td>
                 <td class="fw-bold" dir="ltr">${formatMoney(i.total)}</td>
                 <td class="no-print">
-                    <button class="btn btn-sm btn-outline-dark border" onclick="printInvoice('${i.id}')" title="طباعة"><i class="fa fa-print"></i></button>
+                    <button class="btn btn-sm btn-outline-primary border" onclick="printInvoice('${i.id}', false)" title="طباعة ملونة"><i class="fa fa-print"></i></button>
+                    <button class="btn btn-sm btn-outline-dark border fw-bold" onclick="printInvoice('${i.id}', true)" title="طباعة أبيض وأسود (عالي الدقة)">B&W</button>
                     <button class="btn btn-sm btn-outline-danger border" onclick="createReturn('${i.id}')" title="مرتجع"><i class="fa fa-rotate-left"></i> عكس</button>
                 </td>
             </tr>`;
@@ -1288,7 +1336,7 @@
     };
 
     // --- Print ---
-    window.printInvoice = (id) => {
+    window.printInvoice = (id, highContrast = false) => {
         const inv = data.invoices.find(i => i.id == id);
         const c = data.contacts.find(x => x.id == inv.contactId);
         
@@ -1352,7 +1400,16 @@
             width: 120, height: 120 
         });
 
-        setTimeout(() => window.print(), 350);
+        // --- NEW LOGIC FOR HIGH CONTRAST ---
+        if(highContrast) {
+            document.body.classList.add('print-high-contrast');
+        }
+
+        setTimeout(() => { 
+            window.print();
+            // Remove the class immediately after so the screen doesn't stay black & white
+            document.body.classList.remove('print-high-contrast');
+        }, 350);
     };
 
     // --- Contact & Branches Logic ---

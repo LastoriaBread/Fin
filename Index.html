@@ -172,11 +172,14 @@
         #authSection { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .auth-box { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 450px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border: 2px solid #cbd5e1 !important; }
 
+        /* Raise Z-Index for Item Modal so it shows above Invoice Modal */
+        #itemModal { z-index: 1070 !important; }
+
         /* --- تصميم الفاتورة (PRINT STYLES) --- */
         @media print {
             .sidebar, .no-print, .btn, .modal, .toast-container, .mobile-toggle, .overlay, .main-content > div:not(#printArea) { display: none !important; }
             .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-            body { background: white !important; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; height: 100vh; overflow: visible; }
+            body { background: white !important; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; height: auto; overflow: visible; }
             
             @page {
                 size: A4;
@@ -184,9 +187,9 @@
             }
 
             #printArea { 
-                display: flex !important; 
-                flex-direction: column;
-                min-height: 100vh;
+                /* تم التعديل: إزالة الـ flex لكي يظهر المحتوى بشكل متتابع */
+                display: block !important; 
+                min-height: auto !important;
                 width: 100%;
                 background: white;
                 font-family: 'Cairo', sans-serif;
@@ -287,7 +290,11 @@
             .inv-table tr:nth-child(even) { background-color: #f8fafc; }
             
             /* Footer */
-            .inv-footer { margin-top: auto; page-break-inside: avoid; }
+            /* تم التعديل: إزالة margin-top: auto ليكون الفوتر ملاصقاً للجدول */
+            .inv-footer { 
+                margin-top: 20px; 
+                page-break-inside: avoid; 
+            }
             .totals-container {
                 display: flex;
                 justify-content: flex-end;
@@ -641,7 +648,10 @@
                             <tbody id="invLines"></tbody>
                         </table>
                     </div>
-                    <div class="p-2 bg-white"><button class="btn btn-sm btn-outline-primary fw-bold" onclick="addInvLine()"><i class="fa fa-plus"></i> إضافة سطر</button></div>
+                    <div class="p-2 bg-white d-flex justify-content-between">
+                        <button class="btn btn-sm btn-outline-primary fw-bold" onclick="addInvLine()"><i class="fa fa-plus"></i> إضافة سطر</button>
+                        <button class="btn btn-sm btn-outline-success fw-bold" onclick="openItemModal()"><i class="fa fa-box-open"></i> إضافة صنف جديد</button>
+                    </div>
                 </div>
 
                 <div class="row justify-content-end">

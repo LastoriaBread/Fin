@@ -930,10 +930,8 @@
     };
     window.getSaudiTimeISO = () => new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Riyadh"})).toISOString();
     
-    // Updated Formatting to include Accounting Style (Comma + 2 Decimals)
     const formatMoney = (n) => Number(n).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-    // Mobile Sidebar Toggle
     window.toggleSidebar = () => {
         const s = document.getElementById('mainSidebar');
         const o = document.getElementById('mobileOverlay');
@@ -1017,12 +1015,43 @@
         });
     }
 
+    // --- NEW: Real-time Balance Calculation Helper ---
+    // This fixes the issue where balance was stored incorrectly.
+    // Logic: Debit (Sales/Payments) - Credit (Receipts/Returns/Purchase)
+    function getContactBalance(contactId) {
+        let balance = 0;
+
+        // 1. Invoices Effect
+        data.invoices.filter(i => i.contactId == contactId).forEach(i => {
+            if (i.type === 'Sales Invoice') {
+                balance += Number(i.total); // Debit (+)
+            } else if (i.type === 'Credit Note') {
+                balance -= Number(i.total); // Credit (-)
+            } else if (i.type === 'Purchase Invoice') {
+                balance -= Number(i.total); // Credit (-) (Assuming Vendor liability is negative)
+            }
+        });
+
+        // 2. Payments Effect
+        data.payments.filter(p => p.contactId == contactId).forEach(p => {
+            const amt = Number(p.amount);
+            if (p.type === 'Receipt') {
+                balance -= amt; // Receipt from client reduces debt (-)
+            } else {
+                // Payment to vendor (+), Adjustment (+ or - depending on sign), Reversal (+ or -)
+                // Since "Adjustment Reversal" is now saved with correct sign, we just add it
+                balance += amt; 
+            }
+        });
+
+        return balance;
+    }
+
     function updateUI() {
         let sales=0, purchases=0, received=0;
         data.invoices.forEach(i => { if(i.type==='Sales Invoice') sales+=i.total; else if(i.type==='Purchase Invoice') purchases+=i.total; else sales-=i.total; });
         data.payments.forEach(p => { if(p.type==='Receipt') received+=Number(p.amount); });
 
-        // Using formatMoney for dashboard numbers
         document.getElementById('dashSales').innerText = formatMoney(sales);
         document.getElementById('dashPurchases').innerText = formatMoney(purchases);
         document.getElementById('dashReceived').innerText = formatMoney(received);
@@ -1033,7 +1062,6 @@
         renderInvoicesTable(); renderItemsTable(); renderContactsTable(); renderPaymentsTable();
         populateSelects();
 
-        // Settings Fill
         document.getElementById('setBusNameAr').value = data.profile.businessNameAr || '';
         document.getElementById('setBusNameEn').value = data.profile.businessNameEn || '';
         document.getElementById('setAddr').value = data.profile.address || '';
@@ -1044,13 +1072,11 @@
         if(data.profile.logo) { document.getElementById('logoPreview').src = data.profile.logo; document.getElementById('logoPreview').style.display = 'inline-block'; }
     }
 
-    // --- UI Helpers ---
     const showToast = (msg) => { document.getElementById('toastMsg').innerText = msg; new bootstrap.Toast(document.getElementById('liveToast')).show(); };
     window.showSection = (id) => { 
         document.querySelectorAll('.section-content').forEach(e=>e.style.display='none'); 
         document.getElementById(id).style.display='block'; 
         document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active')); 
-        // Close sidebar on mobile when navigating
         document.getElementById('mainSidebar').classList.remove('active');
         document.getElementById('mobileOverlay').style.display = 'none';
     };
@@ -1061,82 +1087,53 @@
         
         document.getElementById('payContact').innerHTML = placeholder + nameOpts;
         document.getElementById('repContact').innerHTML = placeholder + nameOpts;
-        
-        // Populate "Linked Contact" in Item Modal
         document.getElementById('itemLinkedContact').innerHTML = '<option value="">-- عام (بدون تخصيص) --</option>' + nameOpts;
 
-        // Populate Select2 Dropdowns (ID as value for both)
         const nameSelect = document.getElementById('invContactNameSelect');
         const codeSelect = document.getElementById('invContactCodeSelect');
-        
-        // Clear options but keep placeholder
         nameSelect.innerHTML = '<option></option>'; 
         codeSelect.innerHTML = '<option></option>'; 
 
         data.contacts.forEach(c => {
             const opt1 = new Option(c.name, c.id, false, false);
             nameSelect.add(opt1);
-
             const opt2 = new Option(c.code, c.id, false, false);
             codeSelect.add(opt2);
         });
     }
 
-    // --- Select2 Initialization & Sync Logic ---
     $(document).ready(function() {
-        // Init Select2 with Bootstrap 5 theme
-        $('.select2').select2({
-            theme: 'bootstrap-5',
-            placeholder: 'اختر...',
-            allowClear: true,
-            dropdownParent: $('#invoiceModal') // Fix for Modal Z-Index
-        });
-
-        // Sync Logic
+        $('.select2').select2({ theme: 'bootstrap-5', placeholder: 'اختر...', allowClear: true, dropdownParent: $('#invoiceModal') });
         let isSyncing = false;
-
         $('#invContactNameSelect').on('change', function() {
             if (isSyncing) return;
             isSyncing = true;
             const val = $(this).val();
             $('#invContactCodeSelect').val(val).trigger('change');
-            
-            // Logic for Branches
             updateBranchSelect(val);
-            
-            // RE-RENDER Invoice Lines to filter Items based on new Client
             renderInvLines();
-
             isSyncing = false;
         });
-
         $('#invContactCodeSelect').on('change', function() {
             if (isSyncing) return;
             isSyncing = true;
             const val = $(this).val();
             $('#invContactNameSelect').val(val).trigger('change');
-             // Branch Logic handles by the above trigger
             isSyncing = false;
         });
     });
 
-    // Helper to Show Branches in Invoice Modal
     function updateBranchSelect(contactId) {
         const branchSelect = document.getElementById('invBranchAddr');
         branchSelect.innerHTML = '';
         branchSelect.style.display = 'none';
-
         if (!contactId) return;
-
         const c = data.contacts.find(x => x.id == contactId);
         if (c && c.branches && c.branches.length > 0) {
-            // Add Default Address
             const defOpt = document.createElement('option');
             defOpt.value = c.address;
             defOpt.text = 'المقر الرئيسي: ' + c.address;
             branchSelect.add(defOpt);
-
-            // Add Branches
             c.branches.forEach(b => {
                 const opt = document.createElement('option');
                 opt.value = b.address;
@@ -1147,8 +1144,6 @@
         }
     }
 
-
-    // --- Invoices ---
     function renderInvoicesTable() {
         const t = document.getElementById('invoicesTable'); t.innerHTML = '';
         [...data.invoices].sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(i => {
@@ -1156,7 +1151,6 @@
             const typeClass = i.type==='Sales Invoice'?'success':(i.type==='Credit Note'?'danger':'warning');
             const typeName = i.type==='Sales Invoice'?'فاتورة مبيعات':(i.type==='Purchase Invoice'?'مشتريات':'مرتجع');
             
-            // Applied formatMoney to Total
             t.innerHTML += `<tr>
                 <td class="fw-bold text-primary" dir="ltr">${i.ref}</td>
                 <td>${i.date}</td>
@@ -1167,13 +1161,12 @@
                     <button class="btn btn-sm btn-outline-primary border" onclick="printInvoice('${i.id}', false)" title="طباعة ملونة"><i class="fa fa-print"></i></button>
                     <button class="btn btn-sm btn-outline-dark border fw-bold" onclick="printInvoice('${i.id}', true)" title="طباعة أبيض وأسود (عالي الدقة)">B&W</button>
                     <button class="btn btn-sm btn-outline-danger border" onclick="createReturn('${i.id}')" title="مرتجع"><i class="fa fa-rotate-left"></i> عكس</button>
-                    <button class="btn btn-sm btn-light border text-danger ms-1" onclick="deleteInvoice('${i.key}')" title="حذف للسلة (بدون تأثير مالي)"><i class="fa fa-trash"></i></button>
+                    <button class="btn btn-sm btn-light border text-danger ms-1" onclick="deleteInvoice('${i.key}')" title="حذف للسلة"><i class="fa fa-trash"></i></button>
                 </td>
             </tr>`;
         });
     }
 
-    // New Delete Invoice Function (Without Balance Effect)
     window.deleteInvoice = (key) => {
         if(!currentUser) return;
         if(confirm('هل أنت متأكد من حذف هذه الفاتورة؟ لن يتأثر رصيد العميل بهذا الحذف.')) {
@@ -1187,17 +1180,12 @@
         currentLines = [];
         document.getElementById('invType').value = 'Sales Invoice';
         document.getElementById('invDate').value = getSaudiDateISO();
-        document.getElementById('invInternalNote').value = ''; // Reset Note
-        
-        // Reset Select2
+        document.getElementById('invInternalNote').value = ''; 
         $('#invContactNameSelect').val(null).trigger('change');
         $('#invContactCodeSelect').val(null).trigger('change');
-        
         document.getElementById('invBranchAddr').style.display='none';
-
         const nextNum = data.invoices.length + 1; 
         document.getElementById('invRef').value = "INV-" + String(1000 + nextNum);
-        
         renderInvLines();
         new bootstrap.Modal(document.getElementById('invoiceModal')).show();
     };
@@ -1206,15 +1194,9 @@
         let r = document.getElementById('importRef').value.trim();
         let target = data.invoices.find(i => i.ref === r || i.ref === "INV-" + r);
         if(!target) return alert('غير موجود');
-        
         document.getElementById('invType').value = target.type;
-        // Populate Select2
         const c = data.contacts.find(x => x.id === target.contactId);
-        if(c) {
-            $('#invContactNameSelect').val(c.id).trigger('change');
-            // Code syncs automatically via event
-        }
-        
+        if(c) { $('#invContactNameSelect').val(c.id).trigger('change'); }
         currentLines = [...target.lines];
         renderInvLines();
         alert('تم الاستيراد');
@@ -1224,18 +1206,11 @@
     window.renderInvLines = () => {
         const tb = document.getElementById('invLines'); tb.innerHTML = '';
         let sub = 0, tax = 0;
-
-        // --- Filter Items Logic ---
         const currentContactId = $('#invContactNameSelect').val();
-        
-        // Show general items (no linkedContactId) OR items linked specifically to this contact
-        const validItems = data.items.filter(item => {
-            return !item.linkedContactId || (item.linkedContactId == currentContactId);
-        });
-
+        const validItems = data.items.filter(item => !item.linkedContactId || (item.linkedContactId == currentContactId));
         let itemOpts = validItems.map(x => {
             let nameDisplay = x.nameAr;
-            if(x.linkedContactId) nameDisplay += ' (مخصص)'; // Visual indicator
+            if(x.linkedContactId) nameDisplay += ' (مخصص)'; 
             return `<option value="${x.id}">${nameDisplay}</option>`;
         }).join('');
         itemOpts = `<option value="">اختر...</option>` + itemOpts;
@@ -1243,12 +1218,9 @@
         currentLines.forEach((l, i) => {
             const lineTax = l.price * l.qty * 0.15;
             sub += (l.price * l.qty); tax += lineTax;
-            
-            // Find Item Code
             const itemObj = data.items.find(x => x.id == l.itemId);
             const itemCode = itemObj ? itemObj.code : '-';
 
-            // Applied formatMoney to Tax and Total fields
             tb.innerHTML += `<tr>
                 <td class="bg-light text-center"><small class="fw-bold text-muted">${itemCode}</small></td>
                 <td><select class="form-select form-select-sm" onchange="updLine(${i},'id',this.value)">${itemOpts.replace(`value="${l.itemId}"`, `value="${l.itemId}" selected`)}</select></td>
@@ -1267,18 +1239,10 @@
         if(f==='id') { 
             const it=data.items.find(x=>x.id==v); 
             currentLines[idx].itemId=v; 
-            
-            // Logic: Check if there is a special price linked to this item
             if(it) {
-                 // Check if it has a linkedContact and specialPrice
-                 if(it.linkedContactId && it.specialPrice) {
-                     currentLines[idx].price = Number(it.specialPrice);
-                 } else {
-                     currentLines[idx].price = Number(it.price); 
-                 }
-            } else {
-                currentLines[idx].price = 0;
-            }
+                 if(it.linkedContactId && it.specialPrice) currentLines[idx].price = Number(it.specialPrice);
+                 else currentLines[idx].price = Number(it.price); 
+            } else currentLines[idx].price = 0;
         }
         else if(f==='p') currentLines[idx].price=Number(v);
         else currentLines[idx].qty=Number(v);
@@ -1287,47 +1251,28 @@
     window.delLine = (i) => { currentLines.splice(i, 1); renderInvLines(); };
 
     window.saveInvoice = () => {
-        // Get value from Select2 (which stores the ID)
         const cid = $('#invContactNameSelect').val();
-        
         if(!cid) return alert('يرجى اختيار العميل');
         if(!currentLines.length) return alert('لا توجد أصناف');
         
-        // Determine Address: If Select is Visible, take value, else take Main Address
         const c = data.contacts.find(x=>x.id==cid);
         let finalAddress = c.address;
         const branchSelect = document.getElementById('invBranchAddr');
-        if(branchSelect.style.display !== 'none' && branchSelect.value) {
-            finalAddress = branchSelect.value;
-        }
+        if(branchSelect.style.display !== 'none' && branchSelect.value) finalAddress = branchSelect.value;
 
-        // We get raw numbers from innerText by removing commas for storage
         const rawSub = parseFloat(document.getElementById('invSubTotal').innerText.replace(/,/g, ''));
         const rawTax = parseFloat(document.getElementById('invTax').innerText.replace(/,/g, ''));
         const rawTotal = parseFloat(document.getElementById('invGrandTotal').innerText.replace(/,/g, ''));
         
-        // Capture Note
-        const note = document.getElementById('invInternalNote').value;
-
         const inv = {
             id: Date.now(), ref: document.getElementById('invRef').value,
             contactId: cid, type: document.getElementById('invType').value,
             date: document.getElementById('invDate').value, timestamp: getSaudiTimeISO(),
-            lines: currentLines,
-            subTotal: rawSub,
-            tax: rawTax,
-            total: rawTotal,
-            targetAddress: finalAddress,
-            internalNote: note // SAVE NOTE
+            lines: currentLines, subTotal: rawSub, tax: rawTax, total: rawTotal,
+            targetAddress: finalAddress, internalNote: document.getElementById('invInternalNote').value
         };
         
-        // FIX: Use c.key for updating the specific Firebase Node, not c.id
-        // This prevents creating duplicate "ghost" contacts
-        const cRef = ref(db, `users/${currentUser.uid}/contacts/${c.key}`);
-        let bal = c.balance||0;
-        if(inv.type==='Sales Invoice') bal+=inv.total; else bal-=inv.total;
-        update(cRef, {balance:bal});
-        
+        // Removed updating c.balance here, as we now calculate it dynamically
         set(push(ref(db, `users/${currentUser.uid}/invoices`)), inv).then(()=>{
             bootstrap.Modal.getInstance(document.getElementById('invoiceModal')).hide();
             showToast("تم الحفظ");
@@ -1338,63 +1283,47 @@
         const inv = data.invoices.find(i=>i.id==id);
         currentLines=[...inv.lines];
         document.getElementById('invType').value="Credit Note";
-        
-        // Set Select2 Value
         const c = data.contacts.find(x => x.id === inv.contactId);
-        if(c) {
-             $('#invContactNameSelect').val(c.id).trigger('change');
-        }
-
+        if(c) $('#invContactNameSelect').val(c.id).trigger('change');
         document.getElementById('invDate').value=getSaudiDateISO();
-        document.getElementById('invInternalNote').value = inv.internalNote || ''; // Keep note if exists
-        
+        document.getElementById('invInternalNote').value = inv.internalNote || ''; 
         const nextNum = data.invoices.length + 1; 
         document.getElementById('invRef').value="RET-" + String(1000 + nextNum);
         renderInvLines();
         new bootstrap.Modal(document.getElementById('invoiceModal')).show();
     };
 
-    // --- Print ---
     window.printInvoice = (id, highContrast = false) => {
         const inv = data.invoices.find(i => i.id == id);
         const c = data.contacts.find(x => x.id == inv.contactId);
-        
         document.getElementById('pDocTitle').innerText = inv.type === 'Credit Note' ? 'إشعار دائن' : 'فاتورة ضريبية';
         document.getElementById('pRef').innerText = inv.ref;
         document.getElementById('pDate').innerText = inv.date;
         document.getElementById('pTime').innerText = new Date(inv.timestamp).toLocaleTimeString("en-GB", {timeZone: "Asia/Riyadh"}).slice(0,5);
 
-        // Company Info
         document.getElementById('pCompName').innerText = data.profile.businessNameAr || 'قصة خبزة - ERP';
         document.getElementById('pCompAddr').innerText = data.profile.address || '';
         document.getElementById('pCompVat').innerText = data.profile.vat || '';
         document.getElementById('pCompCR').innerText = data.profile.crNumber || ''; 
         document.getElementById('pCompPhone').innerText = data.profile.phone || '';
         document.getElementById('pCompEmail').innerText = data.profile.email || '';
-        
         const logo = document.getElementById('pLogo');
         if(data.profile.logo) { logo.src = data.profile.logo; logo.style.display = 'block'; } else logo.style.display = 'none';
 
-        // Client Info
         document.getElementById('pClientName').innerText = c ? c.name : '-';
-        // Use Saved Address (targetAddress) if available, else default
         document.getElementById('pClientAddr').innerText = inv.targetAddress ? inv.targetAddress : (c ? (c.address||'-') : '-');
         document.getElementById('pClientTax').innerText = c ? (c.taxId||'-') : '-';
         document.getElementById('pClientCR').innerText = c ? (c.crNumber||'-') : '-';
 
-        // Lines Logic
         const tb = document.getElementById('pLines'); tb.innerHTML = '';
         let totalQty = 0;
-        
         inv.lines.forEach((l) => {
             const item = data.items.find(x => x.id == l.itemId);
             const sub = l.price * l.qty;
             const tax = sub * 0.15;
             const total = sub + tax;
             totalQty += Number(l.qty);
-            
-            tb.innerHTML += `
-            <tr>
+            tb.innerHTML += `<tr>
                 <td class="center-cell">${item ? item.code : '-'}</td>
                 <td style="text-align:right;">${item ? item.nameAr : '-'}</td>
                 <td class="center-cell">${l.qty}</td>
@@ -1406,34 +1335,19 @@
             </tr>`;
         });
         document.getElementById('pTotalQty').innerText = totalQty;
-
-        // Totals
         document.getElementById('pSub').innerText = formatMoney(inv.subTotal);
         document.getElementById('pTax').innerText = formatMoney(inv.tax);
         document.getElementById('pTotal').innerText = formatMoney(inv.total);
-
-        // QR Code
         document.getElementById('qrcode').innerHTML = ""; 
         new QRCode(document.getElementById("qrcode"), { 
             text: generateZatcaBase64(data.profile.businessNameAr||'Co', data.profile.vat||'0', inv.timestamp, inv.total.toFixed(2), inv.tax.toFixed(2)), 
             width: 120, height: 120 
         });
-
-        // --- NEW LOGIC FOR HIGH CONTRAST ---
-        if(highContrast) {
-            document.body.classList.add('print-high-contrast');
-        }
-
-        setTimeout(() => { 
-            window.print();
-            // Remove the class immediately after so the screen doesn't stay black & white
-            document.body.classList.remove('print-high-contrast');
-        }, 350);
+        if(highContrast) document.body.classList.add('print-high-contrast');
+        setTimeout(() => { window.print(); document.body.classList.remove('print-high-contrast'); }, 350);
     };
 
-    // --- Contact & Branches Logic ---
     window.openContactModal = () => {
-        // Reset Fields
         document.getElementById('contactModalTitle').innerText = 'عميل / مورد جديد';
         document.getElementById('contactFirebaseKey').value = '';
         ['cName','cPhone','cEmail','cAddr','cTax','cCR'].forEach(id=>document.getElementById(id).value='');
@@ -1443,14 +1357,11 @@
         new bootstrap.Modal(document.getElementById('contactModal')).show();
     };
 
-    // Open Edit Contact
     window.openEditContact = (key) => {
         const c = data.contacts.find(x => x.key === key);
         if(!c) return;
-        
         document.getElementById('contactModalTitle').innerText = 'تعديل بيانات: ' + c.name;
         document.getElementById('contactFirebaseKey').value = key;
-        
         document.getElementById('cType').value = c.type;
         document.getElementById('cCode').value = c.code;
         document.getElementById('cName').value = c.name;
@@ -1459,35 +1370,21 @@
         document.getElementById('cAddr').value = c.address || '';
         document.getElementById('cTax').value = c.taxId || '';
         document.getElementById('cCR').value = c.crNumber || '';
-        
-        // Fill Branches
         const container = document.getElementById('cBranchesContainer');
         container.innerHTML = '';
-        if(c.branches) {
-            c.branches.forEach(b => {
-                addBranchInput(b.name, b.address);
-            });
-        }
-
+        if(c.branches) c.branches.forEach(b => { addBranchInput(b.name, b.address); });
         new bootstrap.Modal(document.getElementById('contactModal')).show();
     };
     
-    // Add Branch Input Dynamically (with optional values)
     window.addBranchInput = (nameVal = '', addrVal = '') => {
         const div = document.createElement('div');
         div.className = 'input-group mb-2';
-        div.innerHTML = `
-            <input type="text" class="form-control branch-name" placeholder="اسم الفرع" value="${nameVal}">
-            <input type="text" class="form-control branch-addr" placeholder="عنوان الفرع" value="${addrVal}">
-            <button class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>
-        `;
+        div.innerHTML = `<input type="text" class="form-control branch-name" placeholder="اسم الفرع" value="${nameVal}"><input type="text" class="form-control branch-addr" placeholder="عنوان الفرع" value="${addrVal}"><button class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>`;
         document.getElementById('cBranchesContainer').appendChild(div);
     };
 
     window.generateContactCode = () => {
-        // Only generate if adding new (no key present)
         if(document.getElementById('contactFirebaseKey').value) return;
-
         const t = document.getElementById('cType').value;
         const c = data.contacts.length + 1;
         document.getElementById('cCode').value = (t==='Client'?'C':'V') + String(c).padStart(5,'0');
@@ -1495,17 +1392,13 @@
 
     window.saveContact = () => {
         const key = document.getElementById('contactFirebaseKey').value;
-        
-        // Collect Branches
         const branches = [];
         document.querySelectorAll('#cBranchesContainer .input-group').forEach(grp => {
             const name = grp.querySelector('.branch-name').value;
             const addr = grp.querySelector('.branch-addr').value;
             if(name && addr) branches.push({name, address: addr});
         });
-
         const obj = {
-            // If editing, keep old ID. If new, generate ID.
             id: key ? data.contacts.find(x=>x.key===key).id : Date.now(), 
             code: document.getElementById('cCode').value,
             name: document.getElementById('cName').value, 
@@ -1517,21 +1410,13 @@
             crNumber: document.getElementById('cCR').value, 
             branches: branches
         };
-
         if(!obj.name) return alert('الاسم مطلوب');
-
         if(key) {
-            // Update Existing
-            const oldContact = data.contacts.find(x=>x.key===key);
-            obj.balance = oldContact.balance; // Keep existing balance!
-            
             update(ref(db, `users/${currentUser.uid}/contacts/${key}`), obj).then(() => {
                 bootstrap.Modal.getInstance(document.getElementById('contactModal')).hide(); 
                 showToast("تم التعديل بنجاح");
             });
         } else {
-            // Create New
-            obj.balance = 0;
             set(push(ref(db, `users/${currentUser.uid}/contacts`)), obj).then(() => {
                  bootstrap.Modal.getInstance(document.getElementById('contactModal')).hide(); 
                  showToast("تم الحفظ بنجاح");
@@ -1539,15 +1424,11 @@
         }
     };
     
-    // --- Items (New Logic: Add/Edit/Delete) ---
     function renderItemsTable() { 
         const t=document.getElementById('itemsTable'); t.innerHTML=''; 
         data.items.forEach(i => {
             const linkedName = i.linkedContactId ? (data.contacts.find(c=>c.id==i.linkedContactId)?.name || 'غير موجود') : '-';
-            
-            // Applied formatMoney to Price
-            t.innerHTML += `
-            <tr>
+            t.innerHTML += `<tr>
                 <td class="text-muted fw-bold">${i.code}</td>
                 <td class="fw-bold">${i.nameAr}</td>
                 <td>${i.nameEn}</td>
@@ -1561,10 +1442,9 @@
         }); 
     }
 
-    // Open Modal for Add
     window.openItemModal = () => { 
         document.getElementById('itemModalTitle').innerText = 'إضافة صنف';
-        document.getElementById('itemFirebaseKey').value = ''; // Clear key
+        document.getElementById('itemFirebaseKey').value = ''; 
         document.getElementById('itemCode').value = "ITM-"+String(data.items.length+1).padStart(4,'0'); 
         document.getElementById('itemNameAr').value = ''; 
         document.getElementById('itemNameEn').value = '';
@@ -1574,7 +1454,6 @@
         new bootstrap.Modal(document.getElementById('itemModal')).show(); 
     };
 
-    // Open Modal for Edit
     window.openEditItem = (key) => {
         const item = data.items.find(i => i.key === key);
         if(!item) return;
@@ -1589,28 +1468,23 @@
         new bootstrap.Modal(document.getElementById('itemModal')).show();
     };
 
-    // Save (Handles both Create and Update)
     window.saveItem = () => {
         const key = document.getElementById('itemFirebaseKey').value;
         const obj = { 
-            id: key ? data.items.find(i => i.key === key).id : Date.now(), // Keep old ID if editing
+            id: key ? data.items.find(i => i.key === key).id : Date.now(),
             code: document.getElementById('itemCode').value, 
             nameAr: document.getElementById('itemNameAr').value, 
             nameEn: document.getElementById('itemNameEn').value, 
             price: Number(document.getElementById('itemPrice').value),
-            // New Linked Data
             linkedContactId: document.getElementById('itemLinkedContact').value,
             specialPrice: document.getElementById('itemSpecialPrice').value
         };
-
         if (key) {
-            // Update
             update(ref(db, `users/${currentUser.uid}/items/${key}`), obj).then(() => {
                 bootstrap.Modal.getInstance(document.getElementById('itemModal')).hide(); 
                 showToast("تم التعديل بنجاح");
             });
         } else {
-            // Create
             set(push(ref(db, `users/${currentUser.uid}/items`)), obj).then(() => { 
                 bootstrap.Modal.getInstance(document.getElementById('itemModal')).hide(); 
                 showToast("تم الحفظ بنجاح"); 
@@ -1618,17 +1492,13 @@
         }
     };
 
-    // Delete Item
     window.deleteItem = (key) => {
         if(!currentUser) return;
         if(confirm('هل أنت متأكد من حذف هذا الصنف؟')) {
-            remove(ref(db, `users/${currentUser.uid}/items/${key}`)).then(() => {
-                showToast('تم الحذف بنجاح');
-            }).catch(err => alert(err.message));
+            remove(ref(db, `users/${currentUser.uid}/items/${key}`)).then(() => { showToast('تم الحذف بنجاح'); });
         }
     };
 
-    // Settings
     window.saveSettings = () => {
         const save = (l) => {
             const d = { 
@@ -1646,32 +1516,36 @@
         if(f) { const r = new FileReader(); r.onload=e=>save(e.target.result); r.readAsDataURL(f); } else save(null);
     };
 
-    // Helper Renders
+    // --- FIX: Using Dynamic Balance in Contact Table ---
     function renderContactsTable() {
         const t = document.getElementById('contactsTable'); t.innerHTML='';
-        data.contacts.forEach(c => t.innerHTML += `
-        <tr>
-            <td class="text-muted fw-bold">${c.code}</td>
-            <td class="fw-bold">${c.name}</td>
-            <td><span class="badge bg-light text-dark border">${c.type}</span></td>
-            <td>${c.phone}</td>
-            <td class="${c.balance>=0?'text-success fw-bold':'text-danger fw-bold'}" dir="ltr">${formatMoney(c.balance)}</td>
-            <td class="no-print">
-                <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditContact('${c.key}')"><i class="fa fa-edit"></i></button>
-                <button class="btn btn-sm btn-outline-danger" onclick="deleteContact('${c.key}')"><i class="fa fa-trash"></i></button>
-            </td>
-        </tr>`);
+        data.contacts.forEach(c => {
+            // Updated to use the calculated balance function
+            const realBalance = getContactBalance(c.id);
+            
+            t.innerHTML += `
+            <tr>
+                <td class="text-muted fw-bold">${c.code}</td>
+                <td class="fw-bold">${c.name}</td>
+                <td><span class="badge bg-light text-dark border">${c.type}</span></td>
+                <td>${c.phone}</td>
+                <td class="${realBalance>=0?'text-success fw-bold':'text-danger fw-bold'}" dir="ltr">${formatMoney(realBalance)}</td>
+                <td class="no-print">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditContact('${c.key}')"><i class="fa fa-edit"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteContact('${c.key}')"><i class="fa fa-trash"></i></button>
+                </td>
+            </tr>`
+        });
     }
-    // Delete Contact (Updated to use Firebase Key)
+
     window.deleteContact = (key) => { 
         if(!currentUser) return;
         if(confirm('هل أنت متأكد من حذف هذا العميل/المورد؟')) {
-            remove(ref(db, `users/${currentUser.uid}/contacts/${key}`)).then(() => {
-                showToast('تم الحذف بنجاح');
-            }).catch(err => alert(err.message));
+            remove(ref(db, `users/${currentUser.uid}/contacts/${key}`)).then(() => { showToast('تم الحذف بنجاح'); });
         }
     };
 
+    // --- FIX: Payments Display (Show absolute value for reversed items) ---
     function renderPaymentsTable() { 
         const t=document.getElementById('paymentsTable'); t.innerHTML=''; 
         data.payments.slice(-10).reverse().forEach(p=>{
@@ -1681,84 +1555,69 @@
             else if(p.type === 'Adjustment') typeName = 'قيد تسوية';
             else if(p.type === 'Adjustment Reversal') typeName = 'عكس تسوية';
 
-            // Applied formatMoney to Amount
+            // Use Math.abs() to ensure amount is always visible, preventing "empty" look for negative numbers
+            // The type name explains the direction.
+            const displayAmount = Math.abs(Number(p.amount));
+
             t.innerHTML+=`
             <tr>
                 <td class="text-muted small">${p.id.toString().slice(-4)}</td>
                 <td>${p.date}</td>
                 <td>-</td>
                 <td><span class="badge bg-light text-dark border">${typeName}</span></td>
-                <td dir="ltr" class="text-end pe-2 fw-bold text-dark">${formatMoney(p.amount)}</td>
+                <td dir="ltr" class="text-end pe-2 fw-bold text-dark">${formatMoney(displayAmount)}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-dark" onclick="reversePayment(${p.id})"><i class="fa fa-rotate-left"></i> عكس</button>
-                    <button class="btn btn-sm btn-light border text-danger ms-1" onclick="deletePayment('${p.key}')" title="حذف للسلة (بدون تأثير مالي)"><i class="fa fa-trash"></i></button>
+                    <button class="btn btn-sm btn-light border text-danger ms-1" onclick="deletePayment('${p.key}')" title="حذف للسلة"><i class="fa fa-trash"></i></button>
                 </td>
             </tr>`; 
         }); 
     }
 
-    // New Delete Payment (Without Balance Effect)
     window.deletePayment = (key) => {
         if(!currentUser) return;
-        if(confirm('هل أنت متأكد من حذف هذا القيد؟ لن يتأثر الرصيد.')) {
-            remove(ref(db, `users/${currentUser.uid}/payments/${key}`)).then(() => {
-                showToast('تم حذف القيد');
-            });
+        if(confirm('هل أنت متأكد من حذف هذا القيد؟')) {
+            remove(ref(db, `users/${currentUser.uid}/payments/${key}`)).then(() => { showToast('تم حذف القيد'); });
         }
     };
 
     window.savePayment = () => {
-        // Amount is now TEXT input to allow negative signs on mobile easily
         const amtVal = document.getElementById('payAmount').value;
         if(!amtVal) return alert('أدخل المبلغ');
-        
         const p = { id:Date.now(), contactId:document.getElementById('payContact').value, type:document.getElementById('payType').value, date:document.getElementById('payDate').value, amount: amtVal };
         if(!p.contactId) return;
-        
-        processPayment(p);
+        set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
 
-    // Logic separated to support Reversal
-    function processPayment(p) {
-        const c = data.contacts.find(x=>x.id==p.contactId);
-        
-        // FIX: Use c.key to update the correct node, ensuring no duplicates
-        const cRef = ref(db, `users/${currentUser.uid}/contacts/${c.key}`);
-        
-        let b = c.balance||0; 
-        
-        if(p.type==='Receipt') {
-            b-=Number(p.amount); 
-        } else {
-            // Payment, Adjustment, Reversal all add mathematically
-            b+=Number(p.amount); 
-        }
-        
-        update(cRef, {balance:b});
-        set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{
-            showToast("تم الحفظ");
-        });
-    }
-
-    // New Reverse Logic
+    // --- FIX: Reverse Logic (Correct Math) ---
     window.reversePayment = (pid) => {
         if(!confirm('هل تريد عكس هذا القيد؟ سيتم إنشاء قيد جديد بقيمة معاكسة.')) return;
         
         const original = data.payments.find(x => x.id == pid);
         if(!original) return;
 
-        const revAmount = Number(original.amount) * -1;
+        // If Original was Receipt (reduced balance), Reversal must ADD balance (Positive Amount).
+        // If Original was Payment (added balance), Reversal must REDUCE balance (Negative Amount).
+        // Since 'getContactBalance' logic adds Payments/Adjustments, we need to send the correct sign.
+        
+        let revAmount = 0;
+        if(original.type === 'Receipt') {
+            revAmount = Number(original.amount); // Positive to add back
+        } else {
+            revAmount = Number(original.amount) * -1; // Negative to remove
+        }
+
         const p = {
             id: Date.now(),
             contactId: original.contactId,
-            type: 'Adjustment Reversal', // Marking it as reversal
+            type: 'Adjustment Reversal',
             date: getSaudiDateISO(),
             amount: revAmount
         };
-        processPayment(p);
+        
+        set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
     
-    // SOA - UPDATED TO INCLUDE PAYMENTS
     window.generateSOA = () => {
         const cid = document.getElementById('repContact').value;
         if(!cid) return;
@@ -1769,60 +1628,42 @@
         let runningBal = 0;
         let movements = [];
 
-        // 1. Get Invoices
         data.invoices.filter(i => i.contactId == cid).forEach(x => {
             let debit = 0, credit = 0;
-            // Sales Invoice increases Debit (Amount they owe us)
             if(x.type === 'Sales Invoice') { debit = x.total; }
-            // Credit Note / Purchase decreases what they owe (or increases what we owe)
-            else { credit = x.total; }
+            else { credit = x.total; } // Credit Note or Purchase
             
             let desc = `فاتورة ${x.ref}`;
             if(x.internalNote) desc += ` <br><span class="text-muted small">(${x.internalNote})</span>`;
 
-            movements.push({
-                date: x.date,
-                desc: desc,
-                debit: debit,
-                credit: credit,
-                ts: new Date(x.date).getTime()
-            });
+            movements.push({ date: x.date, desc: desc, debit: debit, credit: credit, ts: new Date(x.date).getTime() });
         });
 
-        // 2. Get Payments
         data.payments.filter(p => p.contactId == cid).forEach(x => {
             let debit = 0, credit = 0;
             const amt = Number(x.amount);
             
-            // Receipt (We received money) -> Credit (Reduces balance)
-            if(x.type === 'Receipt') { credit = amt; }
-            // Payment (We paid them) -> Debit (Reduces our debt / increases their debt?)
-            // Actually: Payment to Vendor reduces Credit balance. 
-            // Let's stick to standard: 
-            // Receipt = Credit. Payment = Debit.
-            else { debit = amt; }
+            if(x.type === 'Receipt') { 
+                credit = amt; 
+            } else if(x.type === 'Adjustment Reversal' || x.type === 'Adjustment') {
+                // Determine column based on sign
+                if(amt >= 0) debit = amt;
+                else credit = Math.abs(amt);
+            } else { 
+                debit = amt; // Payment
+            }
 
             let typeName = x.type === 'Receipt' ? 'سند قبض' : (x.type === 'Payment' ? 'سند صرف' : 'تسوية');
+            if(x.type === 'Adjustment Reversal') typeName = 'عكس قيد';
 
-            movements.push({
-                date: x.date,
-                desc: `${typeName} #${x.id.toString().slice(-4)}`,
-                debit: debit,
-                credit: credit,
-                ts: new Date(x.date).getTime()
-            });
+            movements.push({ date: x.date, desc: `${typeName} #${x.id.toString().slice(-4)}`, debit: debit, credit: credit, ts: new Date(x.date).getTime() });
         });
 
-        // 3. Sort by Date
         movements.sort((a,b) => a.ts - b.ts);
 
-        // 4. Render
         movements.forEach(m => {
-            // Balance Formula: Previous + Debit - Credit
             runningBal = runningBal + m.debit - m.credit;
-
-            tb.innerHTML += `
-            <tr>
+            tb.innerHTML += `<tr>
                 <td>${m.date}</td>
                 <td>${m.desc}</td>
                 <td class="text-danger fw-bold">${m.debit > 0 ? formatMoney(m.debit) : '-'}</td>
@@ -1830,7 +1671,6 @@
                 <td class="fw-bold" dir="ltr">${formatMoney(runningBal)}</td>
             </tr>`;
         });
-
         document.getElementById('soaResult').style.display='block';
     };
     window.printSOA = () => window.print();

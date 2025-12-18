@@ -622,7 +622,7 @@
                 </div>
                 <div class="table-responsive">
                     <table class="table table-bordered text-center" id="soaTableRaw">
-                        <thead class="table-light"><tr><th>التاريخ</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
+                        <thead class="table-light"><tr><th>التاريخ</th><th>البيان</th><th>مدين (عليه)</th><th>دائن (له)</th><th>الرصيد</th></tr></thead>
                         <tbody id="soaTable"></tbody>
                     </table>
                 </div>
@@ -1000,12 +1000,18 @@
             const itemsMap = v.items || {};
             const itemsArr = Object.keys(itemsMap).map(key => ({ ...itemsMap[key], key: key }));
 
+            const invMap = v.invoices || {};
+            const invArr = Object.keys(invMap).map(key => ({ ...invMap[key], key: key }));
+
+            const payMap = v.payments || {};
+            const payArr = Object.keys(payMap).map(key => ({ ...payMap[key], key: key }));
+
             data = {
                 profile: v.profile || {},
                 contacts: contactsArr,
                 items: itemsArr,
-                invoices: Object.values(v.invoices || {}),
-                payments: Object.values(v.payments || {})
+                invoices: invArr,
+                payments: payArr
             };
             updateUI();
         });
@@ -1161,10 +1167,21 @@
                     <button class="btn btn-sm btn-outline-primary border" onclick="printInvoice('${i.id}', false)" title="طباعة ملونة"><i class="fa fa-print"></i></button>
                     <button class="btn btn-sm btn-outline-dark border fw-bold" onclick="printInvoice('${i.id}', true)" title="طباعة أبيض وأسود (عالي الدقة)">B&W</button>
                     <button class="btn btn-sm btn-outline-danger border" onclick="createReturn('${i.id}')" title="مرتجع"><i class="fa fa-rotate-left"></i> عكس</button>
+                    <button class="btn btn-sm btn-light border text-danger ms-1" onclick="deleteInvoice('${i.key}')" title="حذف للسلة (بدون تأثير مالي)"><i class="fa fa-trash"></i></button>
                 </td>
             </tr>`;
         });
     }
+
+    // New Delete Invoice Function (Without Balance Effect)
+    window.deleteInvoice = (key) => {
+        if(!currentUser) return;
+        if(confirm('هل أنت متأكد من حذف هذه الفاتورة؟ لن يتأثر رصيد العميل بهذا الحذف.')) {
+            remove(ref(db, `users/${currentUser.uid}/invoices/${key}`)).then(() => {
+                showToast('تم حذف الفاتورة');
+            });
+        }
+    };
 
     window.openInvoiceModal = () => {
         currentLines = [];
@@ -1304,7 +1321,9 @@
             internalNote: note // SAVE NOTE
         };
         
-        const cRef = ref(db, `users/${currentUser.uid}/contacts/${cid}`);
+        // FIX: Use c.key for updating the specific Firebase Node, not c.id
+        // This prevents creating duplicate "ghost" contacts
+        const cRef = ref(db, `users/${currentUser.uid}/contacts/${c.key}`);
         let bal = c.balance||0;
         if(inv.type==='Sales Invoice') bal+=inv.total; else bal-=inv.total;
         update(cRef, {balance:bal});
@@ -1672,10 +1691,21 @@
                 <td dir="ltr" class="text-end pe-2 fw-bold text-dark">${formatMoney(p.amount)}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-dark" onclick="reversePayment(${p.id})"><i class="fa fa-rotate-left"></i> عكس</button>
+                    <button class="btn btn-sm btn-light border text-danger ms-1" onclick="deletePayment('${p.key}')" title="حذف للسلة (بدون تأثير مالي)"><i class="fa fa-trash"></i></button>
                 </td>
             </tr>`; 
         }); 
     }
+
+    // New Delete Payment (Without Balance Effect)
+    window.deletePayment = (key) => {
+        if(!currentUser) return;
+        if(confirm('هل أنت متأكد من حذف هذا القيد؟ لن يتأثر الرصيد.')) {
+            remove(ref(db, `users/${currentUser.uid}/payments/${key}`)).then(() => {
+                showToast('تم حذف القيد');
+            });
+        }
+    };
 
     window.savePayment = () => {
         // Amount is now TEXT input to allow negative signs on mobile easily
@@ -1690,8 +1720,11 @@
 
     // Logic separated to support Reversal
     function processPayment(p) {
-        const cRef = ref(db, `users/${currentUser.uid}/contacts/${p.contactId}`);
         const c = data.contacts.find(x=>x.id==p.contactId);
+        
+        // FIX: Use c.key to update the correct node, ensuring no duplicates
+        const cRef = ref(db, `users/${currentUser.uid}/contacts/${c.key}`);
+        
         let b = c.balance||0; 
         
         if(p.type==='Receipt') {
@@ -1725,24 +1758,79 @@
         processPayment(p);
     };
     
-    // SOA
+    // SOA - UPDATED TO INCLUDE PAYMENTS
     window.generateSOA = () => {
         const cid = document.getElementById('repContact').value;
         if(!cid) return;
+        
         document.getElementById('soaName').innerText = data.contacts.find(x=>x.id==cid).name;
-        let bal=0;
         const tb = document.getElementById('soaTable'); tb.innerHTML='';
         
-        // Updated SOA to include internal Note if available
-        data.invoices.filter(i=>i.contactId==cid).forEach(x=>{ 
-            bal+=(x.total); 
-            let description = `فاتورة ${x.ref}`;
-            if (x.internalNote) {
-                description += ` <br><span class="text-muted small">(${x.internalNote})</span>`;
-            }
+        let runningBal = 0;
+        let movements = [];
 
-            tb.innerHTML+=`<tr><td>${x.date}</td><td>${description}</td><td>${formatMoney(x.total)}</td><td>0</td><td>${formatMoney(bal)}</td></tr>`; 
+        // 1. Get Invoices
+        data.invoices.filter(i => i.contactId == cid).forEach(x => {
+            let debit = 0, credit = 0;
+            // Sales Invoice increases Debit (Amount they owe us)
+            if(x.type === 'Sales Invoice') { debit = x.total; }
+            // Credit Note / Purchase decreases what they owe (or increases what we owe)
+            else { credit = x.total; }
+            
+            let desc = `فاتورة ${x.ref}`;
+            if(x.internalNote) desc += ` <br><span class="text-muted small">(${x.internalNote})</span>`;
+
+            movements.push({
+                date: x.date,
+                desc: desc,
+                debit: debit,
+                credit: credit,
+                ts: new Date(x.date).getTime()
+            });
         });
+
+        // 2. Get Payments
+        data.payments.filter(p => p.contactId == cid).forEach(x => {
+            let debit = 0, credit = 0;
+            const amt = Number(x.amount);
+            
+            // Receipt (We received money) -> Credit (Reduces balance)
+            if(x.type === 'Receipt') { credit = amt; }
+            // Payment (We paid them) -> Debit (Reduces our debt / increases their debt?)
+            // Actually: Payment to Vendor reduces Credit balance. 
+            // Let's stick to standard: 
+            // Receipt = Credit. Payment = Debit.
+            else { debit = amt; }
+
+            let typeName = x.type === 'Receipt' ? 'سند قبض' : (x.type === 'Payment' ? 'سند صرف' : 'تسوية');
+
+            movements.push({
+                date: x.date,
+                desc: `${typeName} #${x.id.toString().slice(-4)}`,
+                debit: debit,
+                credit: credit,
+                ts: new Date(x.date).getTime()
+            });
+        });
+
+        // 3. Sort by Date
+        movements.sort((a,b) => a.ts - b.ts);
+
+        // 4. Render
+        movements.forEach(m => {
+            // Balance Formula: Previous + Debit - Credit
+            runningBal = runningBal + m.debit - m.credit;
+
+            tb.innerHTML += `
+            <tr>
+                <td>${m.date}</td>
+                <td>${m.desc}</td>
+                <td class="text-danger fw-bold">${m.debit > 0 ? formatMoney(m.debit) : '-'}</td>
+                <td class="text-success fw-bold">${m.credit > 0 ? formatMoney(m.credit) : '-'}</td>
+                <td class="fw-bold" dir="ltr">${formatMoney(runningBal)}</td>
+            </tr>`;
+        });
+
         document.getElementById('soaResult').style.display='block';
     };
     window.printSOA = () => window.print();

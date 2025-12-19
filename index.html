@@ -651,6 +651,7 @@
                                     <th>التاريخ</th>
                                     <th>الوصف / المرجع</th>
                                     <th>العميل / المورد</th>
+                                    <th>النوع</th>
                                     <th>مدين (Debit)</th>
                                     <th>دائن (Credit)</th>
                                 </tr>
@@ -1672,16 +1673,16 @@
 
     // --- NEW: Calculate General Ledger Accounts (Simplified to 3) ---
     window.calculateAccounts = () => {
-        let revenue = 0; // Sales - Returns (Excl Tax)
+        let revenue = 0; // Sales - Returns (Now Inclusive of Tax as requested)
         let bank = 0;    // Receipts - Payments
         let ap = 0;      // Total Purchases (Expenses)
 
         // 1. Process Invoices
         data.invoices.forEach(i => {
             if(i.type === 'Sales Invoice') {
-                revenue += Number(i.subTotal); // Revenue is usually excl tax
+                revenue += Number(i.total); // تم التعديل: استخدام total بدلاً من subTotal ليشمل الضريبة
             } else if (i.type === 'Credit Note') {
-                revenue -= Number(i.subTotal);
+                revenue -= Number(i.total); // تم التعديل: استخدام total بدلاً من subTotal
             } else if (i.type === 'Purchase Invoice') {
                 ap += Number(i.total); // Expense amount
             }
@@ -1708,16 +1709,25 @@
         let title = "";
         let movements = [];
 
-        // Helper to find Contact Name
-        const getName = (id) => { const c = data.contacts.find(x=>x.id==id); return c ? c.name : 'غير محدد'; };
+        // Helper to find Contact Name & Type
+        const getContactInfo = (id) => { 
+            const c = data.contacts.find(x=>x.id==id); 
+            if(!c) return { name: 'غير محدد', type: '-' };
+            // تحويل النوع للعربية
+            const typeAr = c.type === 'Client' ? 'عميل' : (c.type === 'Vendor' ? 'مورد' : c.type);
+            return { name: c.name, type: typeAr }; 
+        };
 
         if (accType === 'Revenue') {
-            title = "الإيرادات (المبيعات)";
+            title = "الإيرادات (المبيعات) - شامل الضريبة";
             data.invoices.forEach(i => {
+                const info = getContactInfo(i.contactId);
                 if(i.type === 'Sales Invoice') {
-                    movements.push({ date: i.date, desc: `فاتورة مبيعات - ${i.ref}`, contactName: getName(i.contactId), debit: 0, credit: i.subTotal });
+                    // تم التعديل: استخدام i.total بدلاً من i.subTotal
+                    movements.push({ date: i.date, desc: `فاتورة مبيعات - ${i.ref}`, contactName: info.name, contactType: info.type, debit: 0, credit: i.total });
                 } else if(i.type === 'Credit Note') {
-                    movements.push({ date: i.date, desc: `مرتجع مبيعات - ${i.ref}`, contactName: getName(i.contactId), debit: i.subTotal, credit: 0 });
+                    // تم التعديل: استخدام i.total بدلاً من i.subTotal
+                    movements.push({ date: i.date, desc: `مرتجع مبيعات - ${i.ref}`, contactName: info.name, contactType: info.type, debit: i.total, credit: 0 });
                 }
             });
         } 
@@ -1726,21 +1736,24 @@
             data.payments.forEach(p => {
                 const amt = Number(p.amount);
                 const desc = p.note ? ` (${p.note})` : '';
-                if(p.type === 'Receipt') movements.push({ date: p.date, desc: `سند قبض` + desc, contactName: getName(p.contactId), debit: amt, credit: 0 });
-                else if(p.type === 'Payment') movements.push({ date: p.date, desc: `سند صرف` + desc, contactName: getName(p.contactId), debit: 0, credit: amt });
+                const info = getContactInfo(p.contactId);
+                if(p.type === 'Receipt') movements.push({ date: p.date, desc: `سند قبض` + desc, contactName: info.name, contactType: info.type, debit: amt, credit: 0 });
+                else if(p.type === 'Payment') movements.push({ date: p.date, desc: `سند صرف` + desc, contactName: info.name, contactType: info.type, debit: 0, credit: amt });
             });
         }
         else if (accType === 'Payables') {
             title = "المصروفات (المشتريات)";
             // Add Purchase Invoices (Liability/Expense) -> Credit
             data.invoices.forEach(i => {
-                if(i.type === 'Purchase Invoice') movements.push({ date: i.date, desc: `فاتورة مشتريات - ${i.ref}`, contactName: getName(i.contactId), debit: 0, credit: i.total });
+                const info = getContactInfo(i.contactId);
+                if(i.type === 'Purchase Invoice') movements.push({ date: i.date, desc: `فاتورة مشتريات - ${i.ref}`, contactName: info.name, contactType: info.type, debit: 0, credit: i.total });
             });
             // Add Payments to Vendors (Paying off the liability) -> Debit
             data.payments.forEach(p => {
                 if(p.type === 'Payment') {
                     const desc = p.note ? ` (${p.note})` : '';
-                    movements.push({ date: p.date, desc: `دفع للمورد` + desc, contactName: getName(p.contactId), debit: Number(p.amount), credit: 0 });
+                    const info = getContactInfo(p.contactId);
+                    movements.push({ date: p.date, desc: `دفع للمورد` + desc, contactName: info.name, contactType: info.type, debit: Number(p.amount), credit: 0 });
                 }
             });
         }
@@ -1756,7 +1769,7 @@
                 <td>${m.date}</td>
                 <td>${m.desc}</td>
                 <td>${m.contactName}</td>
-                <td class="${m.debit>0?'fw-bold text-dark':''}">${m.debit>0 ? formatMoney(m.debit) : '-'}</td>
+                <td><span class="badge bg-light text-dark border">${m.contactType}</span></td> <td class="${m.debit>0?'fw-bold text-dark':''}">${m.debit>0 ? formatMoney(m.debit) : '-'}</td>
                 <td class="${m.credit>0?'fw-bold text-dark':''}">${m.credit>0 ? formatMoney(m.credit) : '-'}</td>
             </tr>`;
         });

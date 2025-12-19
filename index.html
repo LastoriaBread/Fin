@@ -118,7 +118,7 @@
         .main-content { margin-right: 270px; padding: 40px; transition: 0.3s; }
 
         /* Dashboard Stats Cards */
-        .stats-card { padding: 25px; position: relative; overflow: hidden; border: none !important; color: white; margin-bottom: 20px; }
+        .stats-card { padding: 25px; position: relative; overflow: hidden; border: none !important; color: white; margin-bottom: 20px; cursor: pointer; }
         .stats-card h3 { font-weight: 800; font-size: 2rem; margin-top: 10px; color: white !important; font-family: 'Segoe UI', sans-serif; }
         .stats-card p { font-size: 1rem; font-weight: 500; opacity: 0.9; color: white !important; }
         
@@ -126,6 +126,7 @@
         .stats-card.received { background: linear-gradient(135deg, #10b981, #047857); }
         .stats-card.purchases { background: linear-gradient(135deg, #ef4444, #b91c1c); }
         .stats-card.net { background: linear-gradient(135deg, #f59e0b, #b45309); }
+        .stats-card.dark { background: linear-gradient(135deg, #1e293b, #0f172a); }
         
         .stats-card .icon-box { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3) !important; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
         .stats-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.15); }
@@ -408,6 +409,7 @@
             <li class="nav-item"><a class="nav-link" onclick="showSection('items')"><i class="fa-solid fa-box-open"></i> المنتجات</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('contacts')"><i class="fa-solid fa-users-line"></i> العملاء والموردين</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('manualEntries')"><i class="fa-solid fa-money-bill-transfer"></i> قيود يدوية</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="showSection('accounts')"><i class="fa-solid fa-building-columns"></i> الحسابات العامة</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('reports')"><i class="fa-solid fa-chart-pie"></i> التقارير</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('settings')"><i class="fa-solid fa-sliders"></i> إعدادات الشركة</a></li>
         </ul>
@@ -422,7 +424,7 @@
             <h3 class="fw-bold mb-4 text-dark"><i class="fa-regular fa-chart-bar text-primary me-2"></i> لوحة المعلومات</h3>
             <div class="row g-4 mb-5">
                 <div class="col-md-3">
-                    <div class="stats-card sales">
+                    <div class="stats-card sales" onclick="showSection('accounts'); renderAccountDetails('Revenue')">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <p>إجمالي المبيعات</p>
@@ -433,7 +435,7 @@
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="stats-card received">
+                    <div class="stats-card received" onclick="showSection('accounts'); renderAccountDetails('Bank')">
                          <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <p>المقبوضات</p>
@@ -586,7 +588,7 @@
                         <input type="date" id="payDate" class="form-control mb-3">
                         <input type="text" inputmode="decimal" id="payAmount" class="form-control mb-3 fw-bold text-center text-primary" placeholder="المبلغ 0.00" style="font-size: 1.2rem;">
                         <div class="form-text text-muted mb-3" style="font-size: 11px;">في قيد التسوية: استخدم رقم سالب للخصم.</div>
-                        <input type="text" id="payNote" class="form-control mb-4" placeholder="ملاحظات">
+                        <input type="text" id="payNote" class="form-control mb-4" placeholder="ملاحظات (شرح القيد)">
                         <button class="btn btn-success w-100 fw-bold shadow-sm" onclick="savePayment()">حفظ الحركة</button>
                     </div>
                 </div>
@@ -598,6 +600,63 @@
                                 <tbody id="paymentsTable"></tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="accounts" class="section-content" style="display:none;">
+            <h3 class="fw-bold mb-4 text-dark"><i class="fa-solid fa-building-columns text-primary me-2"></i> الحسابات العامة (General Ledger)</h3>
+            
+            <div class="row g-4 mb-5">
+                <div class="col-md-4">
+                    <div class="stats-card sales" onclick="renderAccountDetails('Revenue')">
+                        <div class="d-flex justify-content-between">
+                            <div><p>الإيرادات (Sales Revenue)</p><h4 id="accRevenue">0.00</h4></div>
+                            <div class="icon-box"><i class="fa fa-chart-line"></i></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="stats-card received" onclick="renderAccountDetails('Bank')">
+                        <div class="d-flex justify-content-between">
+                            <div><p>البنك / النقدية (Cash/Bank)</p><h4 id="accBank">0.00</h4></div>
+                            <div class="icon-box"><i class="fa fa-university"></i></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="stats-card purchases" onclick="renderAccountDetails('Payables')">
+                        <div class="d-flex justify-content-between">
+                            <div><p>المصروفات (Payables / Expenses)</p><h4 id="accAP">0.00</h4></div>
+                            <div class="icon-box"><i class="fa fa-truck-field"></i></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="accountDetailSection" style="display:none;">
+                <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                    <h5 class="fw-bold text-primary mb-0">تفاصيل الحساب: <span id="accDetailTitle" class="text-dark"></span></h5>
+                    <button class="btn btn-sm btn-success text-white" onclick="exportToExcel('accDetailTableRaw', 'GL_Report')"><i class="fa fa-file-excel me-2"></i> تصدير Excel</button>
+                </div>
+                
+                <div class="custom-table-container">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered text-center" id="accDetailTableRaw">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>الوصف / المرجع</th>
+                                    <th>العميل / المورد</th>
+                                    <th>مدين (Debit)</th>
+                                    <th>دائن (Credit)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accDetailTable"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -1015,35 +1074,25 @@
         });
     }
 
-    // --- NEW: Real-time Balance Calculation Helper ---
-    // This fixes the issue where balance was stored incorrectly.
-    // Logic: Debit (Sales/Payments) - Credit (Receipts/Returns/Purchase)
     function getContactBalance(contactId) {
         let balance = 0;
-
-        // 1. Invoices Effect
         data.invoices.filter(i => i.contactId == contactId).forEach(i => {
             if (i.type === 'Sales Invoice') {
-                balance += Number(i.total); // Debit (+)
+                balance += Number(i.total); 
             } else if (i.type === 'Credit Note') {
-                balance -= Number(i.total); // Credit (-)
+                balance -= Number(i.total); 
             } else if (i.type === 'Purchase Invoice') {
-                balance -= Number(i.total); // Credit (-) (Assuming Vendor liability is negative)
+                balance -= Number(i.total); 
             }
         });
-
-        // 2. Payments Effect
         data.payments.filter(p => p.contactId == contactId).forEach(p => {
             const amt = Number(p.amount);
             if (p.type === 'Receipt') {
-                balance -= amt; // Receipt from client reduces debt (-)
+                balance -= amt; 
             } else {
-                // Payment to vendor (+), Adjustment (+ or - depending on sign), Reversal (+ or -)
-                // Since "Adjustment Reversal" is now saved with correct sign, we just add it
                 balance += amt; 
             }
         });
-
         return balance;
     }
 
@@ -1059,7 +1108,7 @@
         
         document.getElementById('sidebarBusName').innerText = data.profile.businessNameAr || "قصة خبزة - ERP";
 
-        renderInvoicesTable(); renderItemsTable(); renderContactsTable(); renderPaymentsTable();
+        renderInvoicesTable(); renderItemsTable(); renderContactsTable(); renderPaymentsTable(); calculateAccounts();
         populateSelects();
 
         document.getElementById('setBusNameAr').value = data.profile.businessNameAr || '';
@@ -1079,6 +1128,7 @@
         document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active')); 
         document.getElementById('mainSidebar').classList.remove('active');
         document.getElementById('mobileOverlay').style.display = 'none';
+        if(id !== 'accounts') document.getElementById('accountDetailSection').style.display = 'none';
     };
     
     function populateSelects() {
@@ -1272,7 +1322,6 @@
             targetAddress: finalAddress, internalNote: document.getElementById('invInternalNote').value
         };
         
-        // Removed updating c.balance here, as we now calculate it dynamically
         set(push(ref(db, `users/${currentUser.uid}/invoices`)), inv).then(()=>{
             bootstrap.Modal.getInstance(document.getElementById('invoiceModal')).hide();
             showToast("تم الحفظ");
@@ -1516,13 +1565,10 @@
         if(f) { const r = new FileReader(); r.onload=e=>save(e.target.result); r.readAsDataURL(f); } else save(null);
     };
 
-    // --- FIX: Using Dynamic Balance in Contact Table ---
     function renderContactsTable() {
         const t = document.getElementById('contactsTable'); t.innerHTML='';
         data.contacts.forEach(c => {
-            // Updated to use the calculated balance function
             const realBalance = getContactBalance(c.id);
-            
             t.innerHTML += `
             <tr>
                 <td class="text-muted fw-bold">${c.code}</td>
@@ -1545,7 +1591,6 @@
         }
     };
 
-    // --- FIX: Payments Display (Show absolute value for reversed items) ---
     function renderPaymentsTable() { 
         const t=document.getElementById('paymentsTable'); t.innerHTML=''; 
         data.payments.slice(-10).reverse().forEach(p=>{
@@ -1555,15 +1600,17 @@
             else if(p.type === 'Adjustment') typeName = 'قيد تسوية';
             else if(p.type === 'Adjustment Reversal') typeName = 'عكس تسوية';
 
-            // Use Math.abs() to ensure amount is always visible, preventing "empty" look for negative numbers
-            // The type name explains the direction.
+            // Find Contact Name
+            const contact = data.contacts.find(x => x.id == p.contactId);
+            const contactName = contact ? contact.name : 'محذوف';
+
             const displayAmount = Math.abs(Number(p.amount));
 
             t.innerHTML+=`
             <tr>
                 <td class="text-muted small">${p.id.toString().slice(-4)}</td>
                 <td>${p.date}</td>
-                <td>-</td>
+                <td class="fw-bold">${contactName}</td>
                 <td><span class="badge bg-light text-dark border">${typeName}</span></td>
                 <td dir="ltr" class="text-end pe-2 fw-bold text-dark">${formatMoney(displayAmount)}</td>
                 <td>
@@ -1583,28 +1630,32 @@
 
     window.savePayment = () => {
         const amtVal = document.getElementById('payAmount').value;
+        const noteVal = document.getElementById('payNote').value; // Get Note
         if(!amtVal) return alert('أدخل المبلغ');
-        const p = { id:Date.now(), contactId:document.getElementById('payContact').value, type:document.getElementById('payType').value, date:document.getElementById('payDate').value, amount: amtVal };
+        
+        const p = { 
+            id: Date.now(), 
+            contactId: document.getElementById('payContact').value, 
+            type: document.getElementById('payType').value, 
+            date: document.getElementById('payDate').value, 
+            amount: amtVal,
+            note: noteVal // Save Note
+        };
+        
         if(!p.contactId) return;
         set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
 
-    // --- FIX: Reverse Logic (Correct Math) ---
     window.reversePayment = (pid) => {
         if(!confirm('هل تريد عكس هذا القيد؟ سيتم إنشاء قيد جديد بقيمة معاكسة.')) return;
-        
         const original = data.payments.find(x => x.id == pid);
         if(!original) return;
-
-        // If Original was Receipt (reduced balance), Reversal must ADD balance (Positive Amount).
-        // If Original was Payment (added balance), Reversal must REDUCE balance (Negative Amount).
-        // Since 'getContactBalance' logic adds Payments/Adjustments, we need to send the correct sign.
         
         let revAmount = 0;
         if(original.type === 'Receipt') {
-            revAmount = Number(original.amount); // Positive to add back
+            revAmount = Number(original.amount); 
         } else {
-            revAmount = Number(original.amount) * -1; // Negative to remove
+            revAmount = Number(original.amount) * -1; 
         }
 
         const p = {
@@ -1612,12 +1663,109 @@
             contactId: original.contactId,
             type: 'Adjustment Reversal',
             date: getSaudiDateISO(),
-            amount: revAmount
+            amount: revAmount,
+            note: "عكس حركة رقم: " + original.id.toString().slice(-4)
         };
         
         set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
+
+    // --- NEW: Calculate General Ledger Accounts (Simplified to 3) ---
+    window.calculateAccounts = () => {
+        let revenue = 0; // Sales - Returns (Excl Tax)
+        let bank = 0;    // Receipts - Payments
+        let ap = 0;      // Total Purchases (Expenses)
+
+        // 1. Process Invoices
+        data.invoices.forEach(i => {
+            if(i.type === 'Sales Invoice') {
+                revenue += Number(i.subTotal); // Revenue is usually excl tax
+            } else if (i.type === 'Credit Note') {
+                revenue -= Number(i.subTotal);
+            } else if (i.type === 'Purchase Invoice') {
+                ap += Number(i.total); // Expense amount
+            }
+        });
+
+        // 2. Process Payments
+        data.payments.forEach(p => {
+            const amt = Number(p.amount);
+            if(p.type === 'Receipt') {
+                bank += amt;
+            } else if (p.type === 'Payment') {
+                bank -= amt;
+            }
+        });
+
+        document.getElementById('accRevenue').innerText = formatMoney(revenue);
+        document.getElementById('accBank').innerText = formatMoney(bank);
+        document.getElementById('accAP').innerText = formatMoney(ap);
+    }
+
+    // --- NEW: Show Account Details ---
+    window.renderAccountDetails = (accType) => {
+        document.getElementById('accountDetailSection').style.display = 'block';
+        let title = "";
+        let movements = [];
+
+        // Helper to find Contact Name
+        const getName = (id) => { const c = data.contacts.find(x=>x.id==id); return c ? c.name : 'غير محدد'; };
+
+        if (accType === 'Revenue') {
+            title = "الإيرادات (المبيعات)";
+            data.invoices.forEach(i => {
+                if(i.type === 'Sales Invoice') {
+                    movements.push({ date: i.date, desc: `فاتورة مبيعات - ${i.ref}`, contactName: getName(i.contactId), debit: 0, credit: i.subTotal });
+                } else if(i.type === 'Credit Note') {
+                    movements.push({ date: i.date, desc: `مرتجع مبيعات - ${i.ref}`, contactName: getName(i.contactId), debit: i.subTotal, credit: 0 });
+                }
+            });
+        } 
+        else if (accType === 'Bank') {
+            title = "البنك / النقدية";
+            data.payments.forEach(p => {
+                const amt = Number(p.amount);
+                const desc = p.note ? ` (${p.note})` : '';
+                if(p.type === 'Receipt') movements.push({ date: p.date, desc: `سند قبض` + desc, contactName: getName(p.contactId), debit: amt, credit: 0 });
+                else if(p.type === 'Payment') movements.push({ date: p.date, desc: `سند صرف` + desc, contactName: getName(p.contactId), debit: 0, credit: amt });
+            });
+        }
+        else if (accType === 'Payables') {
+            title = "المصروفات (المشتريات)";
+            // Add Purchase Invoices (Liability/Expense) -> Credit
+            data.invoices.forEach(i => {
+                if(i.type === 'Purchase Invoice') movements.push({ date: i.date, desc: `فاتورة مشتريات - ${i.ref}`, contactName: getName(i.contactId), debit: 0, credit: i.total });
+            });
+            // Add Payments to Vendors (Paying off the liability) -> Debit
+            data.payments.forEach(p => {
+                if(p.type === 'Payment') {
+                    const desc = p.note ? ` (${p.note})` : '';
+                    movements.push({ date: p.date, desc: `دفع للمورد` + desc, contactName: getName(p.contactId), debit: Number(p.amount), credit: 0 });
+                }
+            });
+        }
+
+        document.getElementById('accDetailTitle').innerText = title;
+        const tb = document.getElementById('accDetailTable'); tb.innerHTML = '';
+        
+        // Sort by Date
+        movements.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+        movements.forEach(m => {
+            tb.innerHTML += `<tr>
+                <td>${m.date}</td>
+                <td>${m.desc}</td>
+                <td>${m.contactName}</td>
+                <td class="${m.debit>0?'fw-bold text-dark':''}">${m.debit>0 ? formatMoney(m.debit) : '-'}</td>
+                <td class="${m.credit>0?'fw-bold text-dark':''}">${m.credit>0 ? formatMoney(m.credit) : '-'}</td>
+            </tr>`;
+        });
+        
+        // Scroll to details
+        document.getElementById('accountDetailSection').scrollIntoView({ behavior: 'smooth' });
+    }
     
+    // --- FIX: Show Notes in SOA ---
     window.generateSOA = () => {
         const cid = document.getElementById('repContact').value;
         if(!cid) return;
@@ -1646,7 +1794,6 @@
             if(x.type === 'Receipt') { 
                 credit = amt; 
             } else if(x.type === 'Adjustment Reversal' || x.type === 'Adjustment') {
-                // Determine column based on sign
                 if(amt >= 0) debit = amt;
                 else credit = Math.abs(amt);
             } else { 
@@ -1655,8 +1802,12 @@
 
             let typeName = x.type === 'Receipt' ? 'سند قبض' : (x.type === 'Payment' ? 'سند صرف' : 'تسوية');
             if(x.type === 'Adjustment Reversal') typeName = 'عكس قيد';
+            
+            // Add Note if exists
+            let desc = `${typeName} #${x.id.toString().slice(-4)}`;
+            if(x.note) desc += ` <br><span class="text-muted small fst-italic">(${x.note})</span>`;
 
-            movements.push({ date: x.date, desc: `${typeName} #${x.id.toString().slice(-4)}`, debit: debit, credit: credit, ts: new Date(x.date).getTime() });
+            movements.push({ date: x.date, desc: desc, debit: debit, credit: credit, ts: new Date(x.date).getTime() });
         });
 
         movements.sort((a,b) => a.ts - b.ts);

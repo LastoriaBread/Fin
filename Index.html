@@ -118,7 +118,7 @@
         .main-content { margin-right: 270px; padding: 40px; transition: 0.3s; }
 
         /* Dashboard Stats Cards */
-        .stats-card { padding: 25px; position: relative; overflow: hidden; border: none !important; color: white; margin-bottom: 20px; cursor: pointer; }
+        .stats-card { padding: 25px; position: relative; overflow: hidden; border: none !important; color: white; margin-bottom: 20px; cursor: default; }
         .stats-card h3 { font-weight: 800; font-size: 2rem; margin-top: 10px; color: white !important; font-family: 'Segoe UI', sans-serif; }
         .stats-card p { font-size: 1rem; font-weight: 500; opacity: 0.9; color: white !important; }
         
@@ -409,7 +409,6 @@
             <li class="nav-item"><a class="nav-link" onclick="showSection('items')"><i class="fa-solid fa-box-open"></i> المنتجات</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('contacts')"><i class="fa-solid fa-users-line"></i> العملاء والموردين</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('manualEntries')"><i class="fa-solid fa-money-bill-transfer"></i> قيود يدوية</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="showSection('accounts')"><i class="fa-solid fa-building-columns"></i> الحسابات العامة</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('reports')"><i class="fa-solid fa-chart-pie"></i> التقارير</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('settings')"><i class="fa-solid fa-sliders"></i> إعدادات الشركة</a></li>
         </ul>
@@ -424,7 +423,7 @@
             <h3 class="fw-bold mb-4 text-dark"><i class="fa-regular fa-chart-bar text-primary me-2"></i> لوحة المعلومات</h3>
             <div class="row g-4 mb-5">
                 <div class="col-md-3">
-                    <div class="stats-card sales" onclick="showSection('accounts'); renderAccountDetails('Revenue')">
+                    <div class="stats-card sales">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <p>إجمالي المبيعات</p>
@@ -435,7 +434,7 @@
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="stats-card received" onclick="showSection('accounts'); renderAccountDetails('Bank')">
+                    <div class="stats-card received">
                          <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <p>المقبوضات</p>
@@ -555,7 +554,10 @@
         <div id="contacts" class="section-content" style="display:none;">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h3 class="fw-bold text-dark">العملاء والموردين</h3>
-                <button class="btn btn-primary" onclick="openContactModal()"><i class="fa fa-plus ms-2"></i> إضافة جديد</button>
+                <div>
+                     <button class="btn btn-success me-2 text-white" onclick="exportToExcel('contactsTableRaw', 'Contacts_List')"><i class="fa fa-file-excel me-2"></i> Excel</button>
+                     <button class="btn btn-primary" onclick="openContactModal()"><i class="fa fa-plus ms-2"></i> إضافة جديد</button>
+                </div>
             </div>
             <div class="search-box-container">
                 <i class="fa fa-search"></i>
@@ -563,7 +565,7 @@
             </div>
             <div class="custom-table-container">
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover" id="contactsTableRaw">
                         <thead><tr><th>الكود</th><th>الاسم</th><th>النوع</th><th>الهاتف</th><th>الرصيد</th><th class="no-print">إجراءات</th></tr></thead>
                         <tbody id="contactsTable"></tbody>
                     </table>
@@ -604,65 +606,7 @@
                 </div>
             </div>
         </div>
-
-        <div id="accounts" class="section-content" style="display:none;">
-            <h3 class="fw-bold mb-4 text-dark"><i class="fa-solid fa-building-columns text-primary me-2"></i> الحسابات العامة (General Ledger)</h3>
-            
-            <div class="row g-4 mb-5">
-                <div class="col-md-4">
-                    <div class="stats-card sales" onclick="renderAccountDetails('Revenue')">
-                        <div class="d-flex justify-content-between">
-                            <div><p>الإيرادات (Sales Revenue)</p><h4 id="accRevenue">0.00</h4></div>
-                            <div class="icon-box"><i class="fa fa-chart-line"></i></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-4">
-                    <div class="stats-card received" onclick="renderAccountDetails('Bank')">
-                        <div class="d-flex justify-content-between">
-                            <div><p>البنك / النقدية (Cash/Bank)</p><h4 id="accBank">0.00</h4></div>
-                            <div class="icon-box"><i class="fa fa-university"></i></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-4">
-                    <div class="stats-card purchases" onclick="renderAccountDetails('Payables')">
-                        <div class="d-flex justify-content-between">
-                            <div><p>المصروفات (Payables / Expenses)</p><h4 id="accAP">0.00</h4></div>
-                            <div class="icon-box"><i class="fa fa-truck-field"></i></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="accountDetailSection" style="display:none;">
-                <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
-                    <h5 class="fw-bold text-primary mb-0">تفاصيل الحساب: <span id="accDetailTitle" class="text-dark"></span></h5>
-                    <button class="btn btn-sm btn-success text-white" onclick="exportToExcel('accDetailTableRaw', 'GL_Report')"><i class="fa fa-file-excel me-2"></i> تصدير Excel</button>
-                </div>
-                
-                <div class="custom-table-container">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-bordered text-center" id="accDetailTableRaw">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>التاريخ</th>
-                                    <th>الوصف / المرجع</th>
-                                    <th>العميل / المورد</th>
-                                    <th>النوع</th>
-                                    <th>مدين (Debit)</th>
-                                    <th>دائن (Credit)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="accDetailTable"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+        
         <div id="reports" class="section-content" style="display:none;">
             <h3 class="fw-bold mb-4 text-dark">التقارير (SOA)</h3>
             <div class="card p-4 mb-4">
@@ -1109,7 +1053,8 @@
         
         document.getElementById('sidebarBusName').innerText = data.profile.businessNameAr || "قصة خبزة - ERP";
 
-        renderInvoicesTable(); renderItemsTable(); renderContactsTable(); renderPaymentsTable(); calculateAccounts();
+        renderInvoicesTable(); renderItemsTable(); renderContactsTable(); renderPaymentsTable(); 
+        // DELETED: calculateAccounts() call removed
         populateSelects();
 
         document.getElementById('setBusNameAr').value = data.profile.businessNameAr || '';
@@ -1129,7 +1074,7 @@
         document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active')); 
         document.getElementById('mainSidebar').classList.remove('active');
         document.getElementById('mobileOverlay').style.display = 'none';
-        if(id !== 'accounts') document.getElementById('accountDetailSection').style.display = 'none';
+        // DELETED: accountDetailSection check removed
     };
     
     function populateSelects() {
@@ -1671,112 +1616,7 @@
         set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
 
-    // --- NEW: Calculate General Ledger Accounts (Simplified to 3) ---
-    window.calculateAccounts = () => {
-        let revenue = 0; // Sales - Returns (Now Inclusive of Tax as requested)
-        let bank = 0;    // Receipts - Payments
-        let ap = 0;      // Total Purchases (Expenses)
-
-        // 1. Process Invoices
-        data.invoices.forEach(i => {
-            if(i.type === 'Sales Invoice') {
-                revenue += Number(i.total); // تم التعديل: استخدام total بدلاً من subTotal ليشمل الضريبة
-            } else if (i.type === 'Credit Note') {
-                revenue -= Number(i.total); // تم التعديل: استخدام total بدلاً من subTotal
-            } else if (i.type === 'Purchase Invoice') {
-                ap += Number(i.total); // Expense amount
-            }
-        });
-
-        // 2. Process Payments
-        data.payments.forEach(p => {
-            const amt = Number(p.amount);
-            if(p.type === 'Receipt') {
-                bank += amt;
-            } else if (p.type === 'Payment') {
-                bank -= amt;
-            }
-        });
-
-        document.getElementById('accRevenue').innerText = formatMoney(revenue);
-        document.getElementById('accBank').innerText = formatMoney(bank);
-        document.getElementById('accAP').innerText = formatMoney(ap);
-    }
-
-    // --- NEW: Show Account Details ---
-    window.renderAccountDetails = (accType) => {
-        document.getElementById('accountDetailSection').style.display = 'block';
-        let title = "";
-        let movements = [];
-
-        // Helper to find Contact Name & Type
-        const getContactInfo = (id) => { 
-            const c = data.contacts.find(x=>x.id==id); 
-            if(!c) return { name: 'غير محدد', type: '-' };
-            // تحويل النوع للعربية
-            const typeAr = c.type === 'Client' ? 'عميل' : (c.type === 'Vendor' ? 'مورد' : c.type);
-            return { name: c.name, type: typeAr }; 
-        };
-
-        if (accType === 'Revenue') {
-            title = "الإيرادات (المبيعات) - شامل الضريبة";
-            data.invoices.forEach(i => {
-                const info = getContactInfo(i.contactId);
-                if(i.type === 'Sales Invoice') {
-                    // تم التعديل: استخدام i.total بدلاً من i.subTotal
-                    movements.push({ date: i.date, desc: `فاتورة مبيعات - ${i.ref}`, contactName: info.name, contactType: info.type, debit: 0, credit: i.total });
-                } else if(i.type === 'Credit Note') {
-                    // تم التعديل: استخدام i.total بدلاً من i.subTotal
-                    movements.push({ date: i.date, desc: `مرتجع مبيعات - ${i.ref}`, contactName: info.name, contactType: info.type, debit: i.total, credit: 0 });
-                }
-            });
-        } 
-        else if (accType === 'Bank') {
-            title = "البنك / النقدية";
-            data.payments.forEach(p => {
-                const amt = Number(p.amount);
-                const desc = p.note ? ` (${p.note})` : '';
-                const info = getContactInfo(p.contactId);
-                if(p.type === 'Receipt') movements.push({ date: p.date, desc: `سند قبض` + desc, contactName: info.name, contactType: info.type, debit: amt, credit: 0 });
-                else if(p.type === 'Payment') movements.push({ date: p.date, desc: `سند صرف` + desc, contactName: info.name, contactType: info.type, debit: 0, credit: amt });
-            });
-        }
-        else if (accType === 'Payables') {
-            title = "المصروفات (المشتريات)";
-            // Add Purchase Invoices (Liability/Expense) -> Credit
-            data.invoices.forEach(i => {
-                const info = getContactInfo(i.contactId);
-                if(i.type === 'Purchase Invoice') movements.push({ date: i.date, desc: `فاتورة مشتريات - ${i.ref}`, contactName: info.name, contactType: info.type, debit: 0, credit: i.total });
-            });
-            // Add Payments to Vendors (Paying off the liability) -> Debit
-            data.payments.forEach(p => {
-                if(p.type === 'Payment') {
-                    const desc = p.note ? ` (${p.note})` : '';
-                    const info = getContactInfo(p.contactId);
-                    movements.push({ date: p.date, desc: `دفع للمورد` + desc, contactName: info.name, contactType: info.type, debit: Number(p.amount), credit: 0 });
-                }
-            });
-        }
-
-        document.getElementById('accDetailTitle').innerText = title;
-        const tb = document.getElementById('accDetailTable'); tb.innerHTML = '';
-        
-        // Sort by Date
-        movements.sort((a,b) => new Date(a.date) - new Date(b.date));
-
-        movements.forEach(m => {
-            tb.innerHTML += `<tr>
-                <td>${m.date}</td>
-                <td>${m.desc}</td>
-                <td>${m.contactName}</td>
-                <td><span class="badge bg-light text-dark border">${m.contactType}</span></td> <td class="${m.debit>0?'fw-bold text-dark':''}">${m.debit>0 ? formatMoney(m.debit) : '-'}</td>
-                <td class="${m.credit>0?'fw-bold text-dark':''}">${m.credit>0 ? formatMoney(m.credit) : '-'}</td>
-            </tr>`;
-        });
-        
-        // Scroll to details
-        document.getElementById('accountDetailSection').scrollIntoView({ behavior: 'smooth' });
-    }
+    // DELETED: window.calculateAccounts and window.renderAccountDetails functions were here.
     
     // --- FIX: Show Notes in SOA ---
     window.generateSOA = () => {

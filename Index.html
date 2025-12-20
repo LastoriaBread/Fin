@@ -176,6 +176,18 @@
         .modal-body { padding: 30px; }
         .modal-footer { border-top: 1px solid #f1f5f9; padding: 20px 30px; }
 
+        /* --- GLOW EFFECT FOR ITEMS --- */
+        .item-glow-container .select2-selection {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .item-glow-container:hover .select2-selection {
+            box-shadow: 0 0 15px rgba(79, 70, 229, 0.6) !important;
+            border-color: var(--primary-color) !important;
+            transform: scale(1.01);
+            z-index: 50;
+        }
+
         /* --- MOBILE OPTIMIZATION --- */
         @media (max-width: 768px) {
             .sidebar { transform: translateX(100%); width: 280px; }
@@ -1054,7 +1066,6 @@
         document.getElementById('sidebarBusName').innerText = data.profile.businessNameAr || "قصة خبزة - ERP";
 
         renderInvoicesTable(); renderItemsTable(); renderContactsTable(); renderPaymentsTable(); 
-        // DELETED: calculateAccounts() call removed
         populateSelects();
 
         document.getElementById('setBusNameAr').value = data.profile.businessNameAr || '';
@@ -1074,7 +1085,6 @@
         document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active')); 
         document.getElementById('mainSidebar').classList.remove('active');
         document.getElementById('mobileOverlay').style.display = 'none';
-        // DELETED: accountDetailSection check removed
     };
     
     function populateSelects() {
@@ -1217,9 +1227,11 @@
             const itemObj = data.items.find(x => x.id == l.itemId);
             const itemCode = itemObj ? itemObj.code : '-';
 
+            // Changed: Select now has class 'item-select-search' and no inline onchange for ID
+            // Added: 'item-glow-container' class to the TD for glow effect
             tb.innerHTML += `<tr>
                 <td class="bg-light text-center"><small class="fw-bold text-muted">${itemCode}</small></td>
-                <td><select class="form-select form-select-sm" onchange="updLine(${i},'id',this.value)">${itemOpts.replace(`value="${l.itemId}"`, `value="${l.itemId}" selected`)}</select></td>
+                <td class="item-glow-container"><select class="form-select form-select-sm item-select-search" data-index="${i}">${itemOpts.replace(`value="${l.itemId}"`, `value="${l.itemId}" selected`)}</select></td>
                 <td><input type="number" class="form-control form-control-sm" value="${l.price}" onchange="updLine(${i},'p',this.value)"></td>
                 <td><input type="number" class="form-control form-control-sm" value="${l.qty}" onchange="updLine(${i},'q',this.value)"></td>
                 <td class="text-center small text-muted" dir="ltr">${formatMoney(lineTax)}</td>
@@ -1230,6 +1242,24 @@
         document.getElementById('invSubTotal').innerText = formatMoney(sub);
         document.getElementById('invTax').innerText = formatMoney(tax);
         document.getElementById('invGrandTotal').innerText = formatMoney(sub + tax);
+
+        // Init Select2 for Items after rendering
+        $('.item-select-search').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'بحث عن صنف...',
+            dropdownParent: $('#invoiceModal'),
+            width: '100%'
+        });
+        
+        // Bind change event manually
+        $('.item-select-search').on('change', function() {
+            const idx = $(this).data('index');
+            const val = $(this).val();
+            // Prevent recursive loop if value hasn't actually changed in data
+            if(currentLines[idx].itemId != val) {
+                updLine(idx, 'id', val);
+            }
+        });
     };
     window.updLine = (idx, f, v) => {
         if(f==='id') { 
@@ -1616,8 +1646,6 @@
         set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
 
-    // DELETED: window.calculateAccounts and window.renderAccountDetails functions were here.
-    
     // --- FIX: Show Notes in SOA ---
     window.generateSOA = () => {
         const cid = document.getElementById('repContact').value;

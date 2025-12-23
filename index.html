@@ -745,7 +745,7 @@
         </div>
 
         <div id="productReports" class="section-content" style="display:none;">
-            <h3 class="fw-bold mb-4 text-dark">تقرير مبيعات الأصناف (تفصيلي)</h3>
+            <h3 class="fw-bold mb-4 text-dark">تقرير مبيعات الأصناف</h3>
             <div class="card p-4 mb-4">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-4">
@@ -762,15 +762,17 @@
                 </div>
             </div>
             <div class="custom-table-container">
-                <button class="btn btn-success mb-3 text-white" onclick="exportToExcel('prodSalesTableRaw', 'Detailed_Product_Sales')"><i class="fa fa-file-excel me-2"></i> Excel</button>
+                <button class="btn btn-success mb-3 text-white" onclick="exportToExcel('prodSalesTableRaw', 'Product_Sales_Report')"><i class="fa fa-file-excel me-2"></i> Excel</button>
                 <div class="table-responsive">
-                    <table class="table table-bordered border-secondary" id="prodSalesTableRaw">
+                    <table class="table table-striped table-hover align-middle" id="prodSalesTableRaw">
                         <thead>
-                            <tr class="table-dark">
-                                <th width="15%">كود الصنف</th>
-                                <th width="30%">اسم الصنف / العميل</th>
-                                <th width="20%">الكمية</th>
-                                <th width="20%">القيمة الإجمالية</th>
+                            <tr class="table-primary text-center">
+                                <th style="border-radius: 0 10px 10px 0;">التاريخ</th>
+                                <th>كود الصنف</th>
+                                <th>اسم الصنف</th>
+                                <th>العميل</th>
+                                <th>الكمية</th>
+                                <th style="border-radius: 10px 0 0 10px;">الإجمالي</th>
                             </tr>
                         </thead>
                         <tbody id="prodSalesTable"></tbody>
@@ -1220,8 +1222,23 @@
 
     function updateUI() {
         let sales=0, purchases=0, received=0;
-        data.invoices.forEach(i => { if(i.type==='Sales Invoice') sales+=i.total; else if(i.type==='Purchase Invoice') purchases+=i.total; else sales-=i.total; });
-        data.payments.forEach(p => { if(p.type==='Receipt') received+=Number(p.amount); });
+        
+        // 1. Calculate Invoice Sales
+        data.invoices.forEach(i => { 
+            if(i.type==='Sales Invoice') sales+=i.total; 
+            else if(i.type==='Purchase Invoice') purchases+=i.total; 
+            else sales-=i.total; // Credit Note
+        });
+        
+        // 2. Add Positive Adjustments to Total Sales
+        data.payments.forEach(p => { 
+            if(p.type==='Receipt') {
+                received+=Number(p.amount); 
+            }
+            if(p.type === 'Adjustment' && Number(p.amount) > 0) {
+                sales += Number(p.amount);
+            }
+        });
 
         document.getElementById('dashSales').innerText = formatMoney(sales);
         document.getElementById('dashPurchases').innerText = formatMoney(purchases);
@@ -1806,86 +1823,67 @@
         set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
 
-    // --- NEW: PRODUCT SALES REPORT LOGIC (DETAILED PER CLIENT) ---
+    // --- NEW: PRODUCT SALES REPORT LOGIC (FLAT LIST WITH COLUMNS) ---
     window.generateProductSales = () => {
         const d1 = document.getElementById('repProdFrom').value;
         const d2 = document.getElementById('repProdTo').value;
         if(!d1 || !d2) return alert('يرجى تحديد الفترة من وإلى');
 
-        // Structure: { itemId: { itemObj, totalQty, totalVal, clients: { clientName: {qty, val} } } }
-        const stats = {};
+        const rows = [];
 
         data.invoices.forEach(inv => {
             if(inv.date >= d1 && inv.date <= d2) {
                 let factor = 0;
-                if(inv.type === 'Sales Invoice') factor = 1;
-                else if(inv.type === 'Credit Note') factor = -1; 
+                let rowClass = "";
+                
+                if(inv.type === 'Sales Invoice') {
+                    factor = 1;
+                } else if(inv.type === 'Credit Note') {
+                    factor = -1;
+                    rowClass = "table-danger text-danger"; // Red row for returns
+                }
 
                 if(factor !== 0) {
                     const clientName = data.contacts.find(c => c.id == inv.contactId)?.name || 'عميل غير محدد';
                     
                     inv.lines.forEach(l => {
-                        // Init Item
-                        if(!stats[l.itemId]) {
-                            stats[l.itemId] = { 
-                                itemObj: data.items.find(x => x.id == l.itemId),
-                                totalQty: 0, 
-                                totalVal: 0,
-                                clients: {}
-                            };
+                        const item = data.items.find(x => x.id == l.itemId);
+                        if(item) {
+                            const qty = Number(l.qty) * factor;
+                            const total = (Number(l.qty) * Number(l.price)) * factor;
+
+                            rows.push({
+                                date: inv.date,
+                                code: item.code,
+                                name: item.nameAr,
+                                client: clientName,
+                                qty: qty,
+                                total: total,
+                                class: rowClass,
+                                ts: new Date(inv.date).getTime()
+                            });
                         }
-
-                        // Init Client within Item
-                        if(!stats[l.itemId].clients[clientName]) {
-                            stats[l.itemId].clients[clientName] = { qty: 0, val: 0 };
-                        }
-
-                        const lineQty = Number(l.qty) * factor;
-                        const lineVal = (Number(l.qty) * Number(l.price)) * factor;
-
-                        // Add to Totals
-                        stats[l.itemId].totalQty += lineQty;
-                        stats[l.itemId].totalVal += lineVal;
-
-                        // Add to Client
-                        stats[l.itemId].clients[clientName].qty += lineQty;
-                        stats[l.itemId].clients[clientName].val += lineVal;
                     });
                 }
             }
         });
 
+        // Sort by Date Descending
+        rows.sort((a,b) => b.ts - a.ts);
+
         const tb = document.getElementById('prodSalesTable');
         tb.innerHTML = '';
         
-        Object.keys(stats).forEach(id => {
-            const itemStats = stats[id];
-            const item = itemStats.itemObj;
-            
-            if(item) {
-                // 1. Render Main Item Row (Header for this item)
-                tb.innerHTML += `
-                <tr class="table-active">
-                    <td class="fw-bold">${item.code}</td>
-                    <td class="fw-bold text-primary">${item.nameAr} (الإجمالي)</td>
-                    <td class="fw-bold" style="font-size:1.1rem">${itemStats.totalQty}</td>
-                    <td class="fw-bold text-primary" style="font-size:1.1rem">${formatMoney(itemStats.totalVal)}</td>
-                </tr>`;
-
-                // 2. Render Client Sub-Rows
-                Object.keys(itemStats.clients).forEach(clientName => {
-                    const cStat = itemStats.clients[clientName];
-                    if(cStat.qty !== 0) { // Only show active clients
-                        tb.innerHTML += `
-                        <tr style="background-color: white;">
-                            <td style="border-top:none;"></td>
-                            <td class="text-muted"><i class="fa fa-angle-left ms-2"></i> ${clientName}</td>
-                            <td>${cStat.qty}</td>
-                            <td dir="ltr">${formatMoney(cStat.val)}</td>
-                        </tr>`;
-                    }
-                });
-            }
+        rows.forEach(r => {
+            tb.innerHTML += `
+            <tr class="${r.class}">
+                <td>${r.date}</td>
+                <td><span class="badge bg-light text-dark border border-secondary">${r.code}</span></td>
+                <td class="fw-bold">${r.name}</td>
+                <td>${r.client}</td>
+                <td class="fw-bold" style="font-size:1.1rem">${r.qty}</td>
+                <td class="fw-bold text-primary" dir="ltr">${formatMoney(r.total)}</td>
+            </tr>`;
         });
     };
 
@@ -1917,7 +1915,7 @@
             if(x.type === 'Receipt') { 
                 credit = amt; 
             } else if(x.type === 'Payment') { 
-                debit = amt; // Payment to vendor decreases our debt (or refund to client)
+                debit = amt; 
             } else {
                 // Adjustment
                 if(amt >= 0) debit = amt;

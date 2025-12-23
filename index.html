@@ -545,7 +545,8 @@
             <li class="nav-item"><a class="nav-link" onclick="showSection('items')"><i class="fa-solid fa-box-open"></i> المنتجات</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('contacts')"><i class="fa-solid fa-users-line"></i> العملاء والموردين</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('manualEntries')"><i class="fa-solid fa-money-bill-transfer"></i> قيود يدوية</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="showSection('reports')"><i class="fa-solid fa-chart-pie"></i> التقارير</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="showSection('productReports')"><i class="fa-solid fa-chart-column"></i> تقرير الأصناف المباعة</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="showSection('reports')"><i class="fa-solid fa-chart-pie"></i> كشف الحساب</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('settings')"><i class="fa-solid fa-sliders"></i> إعدادات الشركة</a></li>
         </ul>
         <div class="mt-auto p-4">
@@ -742,9 +743,44 @@
                 </div>
             </div>
         </div>
+
+        <div id="productReports" class="section-content" style="display:none;">
+            <h3 class="fw-bold mb-4 text-dark">تقرير مبيعات الأصناف</h3>
+            <div class="card p-4 mb-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">من تاريخ</label>
+                        <input type="date" id="repProdFrom" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">إلى تاريخ</label>
+                        <input type="date" id="repProdTo" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-primary w-100 fw-bold" onclick="generateProductSales()">عرض التقرير</button>
+                    </div>
+                </div>
+            </div>
+            <div class="custom-table-container">
+                <button class="btn btn-success mb-3 text-white" onclick="exportToExcel('prodSalesTableRaw', 'Product_Sales')"><i class="fa fa-file-excel me-2"></i> Excel</button>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="prodSalesTableRaw">
+                        <thead>
+                            <tr>
+                                <th>كود الصنف</th>
+                                <th>اسم الصنف</th>
+                                <th>إجمالي الكمية المباعة</th>
+                                <th>إجمالي القيمة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prodSalesTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
         
         <div id="reports" class="section-content" style="display:none;">
-            <h3 class="fw-bold mb-4 text-dark">التقارير (SOA)</h3>
+            <h3 class="fw-bold mb-4 text-dark">كشف الحساب (SOA)</h3>
             <div class="card p-4 mb-4">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-4"><label class="form-label fw-bold small text-muted">العميل</label><select id="repContact" class="form-select"></select></div>
@@ -1155,8 +1191,10 @@
         });
     }
 
+    // --- REFINED BALANCE CALCULATION TO REFLECT ALL MANUAL ENTRIES CORRECTLY ---
     function getContactBalance(contactId) {
         let balance = 0;
+        // Invoices
         data.invoices.filter(i => i.contactId == contactId).forEach(i => {
             if (i.type === 'Sales Invoice') {
                 balance += Number(i.total); 
@@ -1166,11 +1204,15 @@
                 balance -= Number(i.total); 
             }
         });
+        // Payments / Manual Entries
         data.payments.filter(p => p.contactId == contactId).forEach(p => {
             const amt = Number(p.amount);
             if (p.type === 'Receipt') {
-                balance -= amt; 
+                balance -= amt; // Payment from client reduces their debt
+            } else if (p.type === 'Payment') {
+                balance += amt; // Payment to vendor reduces our debt (moves negative towards zero)
             } else {
+                // Adjustment or Adjustment Reversal: Add directly (negative value reduces debt)
                 balance += amt; 
             }
         });
@@ -1351,8 +1393,6 @@
             const itemObj = data.items.find(x => x.id == l.itemId);
             const itemCode = itemObj ? itemObj.code : '-';
 
-            // Changed: Select now has class 'item-select-search' and no inline onchange for ID
-            // Added: 'item-glow-container' class to the TD for glow effect
             tb.innerHTML += `<tr>
                 <td class="bg-light text-center"><small class="fw-bold text-muted">${itemCode}</small></td>
                 <td class="item-glow-container"><select class="form-select form-select-sm item-select-search" data-index="${i}">${itemOpts.replace(`value="${l.itemId}"`, `value="${l.itemId}" selected`)}</select></td>
@@ -1367,7 +1407,6 @@
         document.getElementById('invTax').innerText = formatMoney(tax);
         document.getElementById('invGrandTotal').innerText = formatMoney(sub + tax);
 
-        // Init Select2 for Items after rendering
         $('.item-select-search').select2({
             theme: 'bootstrap-5',
             placeholder: 'بحث عن صنف...',
@@ -1375,11 +1414,9 @@
             width: '100%'
         });
         
-        // Bind change event manually
         $('.item-select-search').on('change', function() {
             const idx = $(this).data('index');
             const val = $(this).val();
-            // Prevent recursive loop if value hasn't actually changed in data
             if(currentLines[idx].itemId != val) {
                 updLine(idx, 'id', val);
             }
@@ -1770,7 +1807,46 @@
         set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
 
-    // --- FIX: Show Notes in SOA ---
+    // --- NEW: PRODUCT SALES REPORT LOGIC ---
+    window.generateProductSales = () => {
+        const d1 = document.getElementById('repProdFrom').value;
+        const d2 = document.getElementById('repProdTo').value;
+        if(!d1 || !d2) return alert('يرجى تحديد الفترة من وإلى');
+
+        const stats = {};
+
+        data.invoices.forEach(inv => {
+            if(inv.date >= d1 && inv.date <= d2) {
+                let factor = 0;
+                // We only care about sales affecting inventory/revenue
+                if(inv.type === 'Sales Invoice') factor = 1;
+                else if(inv.type === 'Credit Note') factor = -1; // Deduct from sales stats
+
+                if(factor !== 0) {
+                    inv.lines.forEach(l => {
+                        if(!stats[l.itemId]) stats[l.itemId] = { qty: 0, total: 0 };
+                        stats[l.itemId].qty += (Number(l.qty) * factor);
+                        stats[l.itemId].total += (Number(l.qty) * Number(l.price) * factor);
+                    });
+                }
+            }
+        });
+
+        const tb = document.getElementById('prodSalesTable');
+        tb.innerHTML = '';
+        Object.keys(stats).forEach(id => {
+            const item = data.items.find(x => x.id == id);
+            if(item && stats[id].qty !== 0) {
+                 tb.innerHTML += `<tr>
+                    <td>${item.code}</td>
+                    <td>${item.nameAr}</td>
+                    <td class="fw-bold" style="font-size:1.1rem">${stats[id].qty}</td>
+                    <td class="fw-bold text-primary" style="font-size:1.1rem">${formatMoney(stats[id].total)}</td>
+                 </tr>`;
+            }
+        });
+    };
+
     window.generateSOA = () => {
         const cid = document.getElementById('repContact').value;
         if(!cid) return;
@@ -1798,17 +1874,34 @@
             
             if(x.type === 'Receipt') { 
                 credit = amt; 
-            } else if(x.type === 'Adjustment Reversal' || x.type === 'Adjustment') {
+            } else if(x.type === 'Payment') { 
+                debit = amt; // Corrected: Payment to vendor (or refund to client) decreases balance (if + balance means they owe us) but usually payment reduces liability.
+                // Re-align with getContactBalance:
+                // Receipt (-)
+                // Payment (+)
+            } else {
+                // Adjustment
                 if(amt >= 0) debit = amt;
                 else credit = Math.abs(amt);
-            } else { 
-                debit = amt; // Payment
+            }
+
+            // Adjustments logic for SOA columns:
+            // If Receipt: Credit column
+            // If Payment: Debit column (reduces credit balance) or... wait.
+            // Let's stick to: Debit = Charge (Increase Balance), Credit = Pay (Decrease Balance)
+            // Sales = Debit. Receipt = Credit.
+            // Purchase = Credit. Payment = Debit.
+            
+            // Correction for Payment in SOA specifically:
+            if(x.type === 'Payment') {
+                // Payment implies we paid them. If they are a vendor, this is Debit (reduces Credit balance).
+                debit = amt; 
+                credit = 0;
             }
 
             let typeName = x.type === 'Receipt' ? 'سند قبض' : (x.type === 'Payment' ? 'سند صرف' : 'تسوية');
             if(x.type === 'Adjustment Reversal') typeName = 'عكس قيد';
             
-            // Add Note if exists
             let desc = `${typeName} #${x.id.toString().slice(-4)}`;
             if(x.note) desc += ` <br><span class="text-muted small fst-italic">(${x.note})</span>`;
 

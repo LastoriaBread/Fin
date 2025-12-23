@@ -745,7 +745,7 @@
         </div>
 
         <div id="productReports" class="section-content" style="display:none;">
-            <h3 class="fw-bold mb-4 text-dark">تقرير مبيعات الأصناف</h3>
+            <h3 class="fw-bold mb-4 text-dark">تقرير مبيعات الأصناف (تفصيلي)</h3>
             <div class="card p-4 mb-4">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-4">
@@ -762,15 +762,15 @@
                 </div>
             </div>
             <div class="custom-table-container">
-                <button class="btn btn-success mb-3 text-white" onclick="exportToExcel('prodSalesTableRaw', 'Product_Sales')"><i class="fa fa-file-excel me-2"></i> Excel</button>
+                <button class="btn btn-success mb-3 text-white" onclick="exportToExcel('prodSalesTableRaw', 'Detailed_Product_Sales')"><i class="fa fa-file-excel me-2"></i> Excel</button>
                 <div class="table-responsive">
-                    <table class="table table-hover" id="prodSalesTableRaw">
+                    <table class="table table-bordered border-secondary" id="prodSalesTableRaw">
                         <thead>
-                            <tr>
-                                <th>كود الصنف</th>
-                                <th>اسم الصنف</th>
-                                <th>إجمالي الكمية المباعة</th>
-                                <th>إجمالي القيمة</th>
+                            <tr class="table-dark">
+                                <th width="15%">كود الصنف</th>
+                                <th width="30%">اسم الصنف / العميل</th>
+                                <th width="20%">الكمية</th>
+                                <th width="20%">القيمة الإجمالية</th>
                             </tr>
                         </thead>
                         <tbody id="prodSalesTable"></tbody>
@@ -1191,7 +1191,6 @@
         });
     }
 
-    // --- REFINED BALANCE CALCULATION TO REFLECT ALL MANUAL ENTRIES CORRECTLY ---
     function getContactBalance(contactId) {
         let balance = 0;
         // Invoices
@@ -1807,26 +1806,50 @@
         set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
 
-    // --- NEW: PRODUCT SALES REPORT LOGIC ---
+    // --- NEW: PRODUCT SALES REPORT LOGIC (DETAILED PER CLIENT) ---
     window.generateProductSales = () => {
         const d1 = document.getElementById('repProdFrom').value;
         const d2 = document.getElementById('repProdTo').value;
         if(!d1 || !d2) return alert('يرجى تحديد الفترة من وإلى');
 
+        // Structure: { itemId: { itemObj, totalQty, totalVal, clients: { clientName: {qty, val} } } }
         const stats = {};
 
         data.invoices.forEach(inv => {
             if(inv.date >= d1 && inv.date <= d2) {
                 let factor = 0;
-                // We only care about sales affecting inventory/revenue
                 if(inv.type === 'Sales Invoice') factor = 1;
-                else if(inv.type === 'Credit Note') factor = -1; // Deduct from sales stats
+                else if(inv.type === 'Credit Note') factor = -1; 
 
                 if(factor !== 0) {
+                    const clientName = data.contacts.find(c => c.id == inv.contactId)?.name || 'عميل غير محدد';
+                    
                     inv.lines.forEach(l => {
-                        if(!stats[l.itemId]) stats[l.itemId] = { qty: 0, total: 0 };
-                        stats[l.itemId].qty += (Number(l.qty) * factor);
-                        stats[l.itemId].total += (Number(l.qty) * Number(l.price) * factor);
+                        // Init Item
+                        if(!stats[l.itemId]) {
+                            stats[l.itemId] = { 
+                                itemObj: data.items.find(x => x.id == l.itemId),
+                                totalQty: 0, 
+                                totalVal: 0,
+                                clients: {}
+                            };
+                        }
+
+                        // Init Client within Item
+                        if(!stats[l.itemId].clients[clientName]) {
+                            stats[l.itemId].clients[clientName] = { qty: 0, val: 0 };
+                        }
+
+                        const lineQty = Number(l.qty) * factor;
+                        const lineVal = (Number(l.qty) * Number(l.price)) * factor;
+
+                        // Add to Totals
+                        stats[l.itemId].totalQty += lineQty;
+                        stats[l.itemId].totalVal += lineVal;
+
+                        // Add to Client
+                        stats[l.itemId].clients[clientName].qty += lineQty;
+                        stats[l.itemId].clients[clientName].val += lineVal;
                     });
                 }
             }
@@ -1834,15 +1857,34 @@
 
         const tb = document.getElementById('prodSalesTable');
         tb.innerHTML = '';
+        
         Object.keys(stats).forEach(id => {
-            const item = data.items.find(x => x.id == id);
-            if(item && stats[id].qty !== 0) {
-                 tb.innerHTML += `<tr>
-                    <td>${item.code}</td>
-                    <td>${item.nameAr}</td>
-                    <td class="fw-bold" style="font-size:1.1rem">${stats[id].qty}</td>
-                    <td class="fw-bold text-primary" style="font-size:1.1rem">${formatMoney(stats[id].total)}</td>
-                 </tr>`;
+            const itemStats = stats[id];
+            const item = itemStats.itemObj;
+            
+            if(item) {
+                // 1. Render Main Item Row (Header for this item)
+                tb.innerHTML += `
+                <tr class="table-active">
+                    <td class="fw-bold">${item.code}</td>
+                    <td class="fw-bold text-primary">${item.nameAr} (الإجمالي)</td>
+                    <td class="fw-bold" style="font-size:1.1rem">${itemStats.totalQty}</td>
+                    <td class="fw-bold text-primary" style="font-size:1.1rem">${formatMoney(itemStats.totalVal)}</td>
+                </tr>`;
+
+                // 2. Render Client Sub-Rows
+                Object.keys(itemStats.clients).forEach(clientName => {
+                    const cStat = itemStats.clients[clientName];
+                    if(cStat.qty !== 0) { // Only show active clients
+                        tb.innerHTML += `
+                        <tr style="background-color: white;">
+                            <td style="border-top:none;"></td>
+                            <td class="text-muted"><i class="fa fa-angle-left ms-2"></i> ${clientName}</td>
+                            <td>${cStat.qty}</td>
+                            <td dir="ltr">${formatMoney(cStat.val)}</td>
+                        </tr>`;
+                    }
+                });
             }
         });
     };
@@ -1875,26 +1917,15 @@
             if(x.type === 'Receipt') { 
                 credit = amt; 
             } else if(x.type === 'Payment') { 
-                debit = amt; // Corrected: Payment to vendor (or refund to client) decreases balance (if + balance means they owe us) but usually payment reduces liability.
-                // Re-align with getContactBalance:
-                // Receipt (-)
-                // Payment (+)
+                debit = amt; // Payment to vendor decreases our debt (or refund to client)
             } else {
                 // Adjustment
                 if(amt >= 0) debit = amt;
                 else credit = Math.abs(amt);
             }
 
-            // Adjustments logic for SOA columns:
-            // If Receipt: Credit column
-            // If Payment: Debit column (reduces credit balance) or... wait.
-            // Let's stick to: Debit = Charge (Increase Balance), Credit = Pay (Decrease Balance)
-            // Sales = Debit. Receipt = Credit.
-            // Purchase = Credit. Payment = Debit.
-            
             // Correction for Payment in SOA specifically:
             if(x.type === 'Payment') {
-                // Payment implies we paid them. If they are a vendor, this is Debit (reduces Credit balance).
                 debit = amt; 
                 credit = 0;
             }

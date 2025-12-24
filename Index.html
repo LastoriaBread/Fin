@@ -13,6 +13,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     
@@ -765,7 +766,7 @@
         </div>
 
         <div id="productReports" class="section-content" style="display:none;">
-            <h3 class="fw-bold mb-4 text-dark">تقرير مبيعات الأصناف</h3>
+            <h3 class="fw-bold mb-4 text-dark">تقرير مبيعات الأصناف وتكلفتها</h3>
             <div class="card p-4 mb-4">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-4">
@@ -787,12 +788,15 @@
                     <table class="table table-striped table-hover align-middle" id="prodSalesTableRaw">
                         <thead>
                             <tr class="table-primary text-center">
-                                <th style="border-radius: 0 10px 10px 0;">التاريخ</th>
+                                <th>التاريخ</th>
                                 <th>كود الصنف</th>
                                 <th>اسم الصنف</th>
                                 <th>العميل</th>
+                                <th>رقم الفاتورة</th>
                                 <th>الكمية</th>
-                                <th style="border-radius: 10px 0 0 10px;">الإجمالي</th>
+                                <th>إجمالي البيع</th>
+                                <th>إجمالي التكلفة</th>
+                                <th>صافي الربح</th>
                             </tr>
                         </thead>
                         <tbody id="prodSalesTable"></tbody>
@@ -815,12 +819,12 @@
                     <h5 class="fw-bold text-primary mb-0">كشف حساب: <span id="soaName" class="text-dark"></span></h5>
                     <div>
                         <button class="btn btn-sm btn-success me-2 text-white" onclick="exportToExcel('soaTableRaw', 'Statement_Account')"><i class="fa fa-file-excel"></i> Excel</button>
-                        <button class="btn btn-sm btn-outline-dark" onclick="printSOA()"><i class="fa fa-print"></i> طباعة</button>
+                        <button class="btn btn-sm btn-outline-danger me-2" onclick="downloadSOAPDF()"><i class="fa fa-file-pdf"></i> تحميل PDF</button>
                     </div>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-bordered text-center" id="soaTableRaw">
-                        <thead class="table-light"><tr><th>التاريخ</th><th>البيان</th><th>مدين (عليه)</th><th>دائن (له)</th><th>الرصيد</th></tr></thead>
+                        <thead class="table-light"><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
                         <tbody id="soaTable"></tbody>
                     </table>
                 </div>
@@ -876,7 +880,7 @@
                     <div class="row g-3">
                         <div class="col-md-3">
                             <label class="small text-muted fw-bold mb-1">النوع</label>
-                            <select id="invType" class="form-select bg-white">
+                            <select id="invType" class="form-select bg-white" onchange="updateInvRefPrefix()">
                                 <option value="Sales Invoice">فاتورة مبيعات</option>
                                 <option value="Purchase Invoice">فاتورة مشتريات</option>
                                 <option value="Credit Note">مرتجع / إشعار دائن</option>
@@ -962,8 +966,16 @@
                 <input id="itemNameAr" class="form-control mb-3" placeholder="اسم الصنف (عربي)">
                 <input id="itemNameEn" class="form-control mb-3" placeholder="Name (En)">
                 
-                <label class="form-label text-muted small fw-bold">سعر البيع الافتراضي</label>
-                <input id="itemPrice" type="number" class="form-control mb-3 fw-bold text-primary" placeholder="0.00">
+                <div class="row">
+                    <div class="col-6">
+                        <label class="form-label text-muted small fw-bold">سعر البيع الافتراضي</label>
+                        <input id="itemPrice" type="number" class="form-control mb-3 fw-bold text-primary" placeholder="0.00">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-muted small fw-bold text-danger">سعر التكلفة (Cost)</label>
+                        <input id="itemCost" type="number" class="form-control mb-3 fw-bold text-danger" placeholder="0.00">
+                    </div>
+                </div>
                 
                 <hr class="my-3">
                 <label class="form-label text-muted small fw-bold text-success"><i class="fa fa-link"></i> ربط بعميل محدد (سعر خاص)</label>
@@ -1392,6 +1404,18 @@
         }
     };
 
+    // --- UPDATED LOGIC: AUTO-CHANGE INVOICE PREFIX BASED ON TYPE ---
+    window.updateInvRefPrefix = () => {
+        const t = document.getElementById('invType').value;
+        let pre = 'INV-';
+        if(t === 'Credit Note') pre = 'RET-'; // User asked for RET here
+        else if(t === 'Purchase Invoice') pre = 'PUR-';
+
+        // Calculate next number (Global sequence based on total invoices)
+        const nextNum = data.invoices.length + 1;
+        document.getElementById('invRef').value = pre + String(1000 + nextNum);
+    };
+
     window.openInvoiceModal = () => {
         currentLines = [];
         document.getElementById('invType').value = 'Sales Invoice';
@@ -1400,8 +1424,10 @@
         $('#invContactNameSelect').val(null).trigger('change');
         $('#invContactCodeSelect').val(null).trigger('change');
         document.getElementById('invBranchAddr').style.display='none';
-        const nextNum = data.invoices.length + 1; 
-        document.getElementById('invRef').value = "INV-" + String(1000 + nextNum);
+        
+        // Use the new function to set initial reference
+        updateInvRefPrefix();
+        
         renderInvLines();
         new bootstrap.Modal(document.getElementById('invoiceModal')).show();
     };
@@ -1679,6 +1705,7 @@
         document.getElementById('itemNameAr').value = ''; 
         document.getElementById('itemNameEn').value = '';
         document.getElementById('itemPrice').value = ''; 
+        document.getElementById('itemCost').value = ''; 
         document.getElementById('itemLinkedContact').value = ''; 
         document.getElementById('itemSpecialPrice').value = '';
         new bootstrap.Modal(document.getElementById('itemModal')).show(); 
@@ -1693,6 +1720,7 @@
         document.getElementById('itemNameAr').value = item.nameAr;
         document.getElementById('itemNameEn').value = item.nameEn;
         document.getElementById('itemPrice').value = item.price;
+        document.getElementById('itemCost').value = item.costPrice || ''; // Edit Cost
         document.getElementById('itemLinkedContact').value = item.linkedContactId || '';
         document.getElementById('itemSpecialPrice').value = item.specialPrice || '';
         new bootstrap.Modal(document.getElementById('itemModal')).show();
@@ -1706,6 +1734,7 @@
             nameAr: document.getElementById('itemNameAr').value, 
             nameEn: document.getElementById('itemNameEn').value, 
             price: Number(document.getElementById('itemPrice').value),
+            costPrice: Number(document.getElementById('itemCost').value), // Save Cost
             linkedContactId: document.getElementById('itemLinkedContact').value,
             specialPrice: document.getElementById('itemSpecialPrice').value
         };
@@ -1863,6 +1892,7 @@
             if(inv.date >= d1 && inv.date <= d2) {
                 let factor = 0;
                 let rowClass = "";
+                let unitCost = 0;
                 
                 if(inv.type === 'Sales Invoice') {
                     factor = 1;
@@ -1875,18 +1905,38 @@
                     const clientName = data.contacts.find(c => c.id == inv.contactId)?.name || 'عميل غير محدد';
                     
                     inv.lines.forEach(l => {
+                        // Find current Item info
                         const item = data.items.find(x => x.id == l.itemId);
                         if(item) {
                             const qty = Number(l.qty) * factor;
-                            const total = (Number(l.qty) * Number(l.price)) * factor;
+                            const totalSale = (Number(l.qty) * Number(l.price)) * factor;
+                            
+                            // Cost Calculation:
+                            // If it's a Return (Credit Note), Cost is 0 (as requested).
+                            // If it's a Sale, Cost is item.costPrice * qty.
+                            let totalCost = 0;
+                            let netProfit = 0;
+
+                            if(inv.type === 'Sales Invoice') {
+                                unitCost = Number(item.costPrice || 0);
+                                totalCost = (Number(l.qty) * unitCost);
+                                netProfit = totalSale - totalCost;
+                            } else {
+                                // Credit Note -> Cost is 0, Net Profit is 0 (as requested)
+                                totalCost = 0;
+                                netProfit = 0;
+                            }
 
                             rows.push({
                                 date: inv.date,
                                 code: item.code,
                                 name: item.nameAr,
                                 client: clientName,
+                                ref: inv.ref,
                                 qty: qty,
-                                total: total,
+                                totalSale: totalSale,
+                                totalCost: totalCost,
+                                netProfit: netProfit,
                                 class: rowClass,
                                 ts: new Date(inv.date).getTime()
                             });
@@ -1909,8 +1959,11 @@
                 <td><span class="badge bg-light text-dark border border-secondary">${r.code}</span></td>
                 <td class="fw-bold">${r.name}</td>
                 <td>${r.client}</td>
+                <td class="small fw-bold">${r.ref}</td>
                 <td class="fw-bold" style="font-size:1.1rem">${r.qty}</td>
-                <td class="fw-bold text-primary" dir="ltr">${formatMoney(r.total)}</td>
+                <td class="fw-bold text-primary" dir="ltr">${formatMoney(r.totalSale)}</td>
+                <td class="fw-bold text-danger" dir="ltr">${formatMoney(r.totalCost)}</td>
+                <td class="fw-bold text-success" dir="ltr">${formatMoney(r.netProfit)}</td>
             </tr>`;
         });
     };
@@ -1979,7 +2032,33 @@
         });
         document.getElementById('soaResult').style.display='block';
     };
-    window.printSOA = () => window.print();
+    
+    // --- UPDATED PDF FUNCTION TO FIX ARABIC HEADER ---
+    window.downloadSOAPDF = () => {
+        const element = document.getElementById('soaResult');
+        
+        // Remove gradient from header temporarily for cleaner screenshot
+        const ths = element.querySelectorAll('thead th');
+        ths.forEach(th => th.style.background = '#fff'); // Force white bg for PDF
+        
+        const opt = {
+            margin:       10,
+            filename:     'Statement_Account.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: true, letterRendering: true }, // Added letterRendering
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        // Temporarily hide buttons for clean PDF
+        const buttons = element.querySelector('div.d-flex > div');
+        buttons.style.display = 'none';
+        
+        html2pdf().set(opt).from(element).save().then(() => {
+            buttons.style.display = 'block'; // Show buttons again
+            // Restore header style (optional, or just leave it white)
+             ths.forEach(th => th.style.background = '');
+        });
+    };
     window.exportToExcel = (id, name) => XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById(id), {sheet:"Sheet1"}), name+".xlsx");
 
 </script>

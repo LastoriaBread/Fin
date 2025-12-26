@@ -274,6 +274,18 @@
             z-index: 50;
         }
 
+        /* === FIX 1: INVOICE MODAL SCROLLING & SIZE === */
+        /* Making the invoice modal full screen and removing inner scroll restrictions */
+        #invoiceModal .table-responsive {
+            max-height: none !important; /* Removed 50vh constraint */
+            overflow: visible !important;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        #invoiceModal .modal-body {
+            overflow-y: auto !important; /* Allow body to scroll */
+        }
+
         /* --- MOBILE OPTIMIZATION --- */
         @media (max-width: 768px) {
             .sidebar { transform: translateX(100%); width: 280px; }
@@ -318,14 +330,45 @@
         .badge-soft-danger { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca !important; }
         .badge-soft-warning { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a !important; }
 
-        /* --- MODERN PRINT STYLES --- */
+        /* === FIX 2: PRINTING ISSUES (MULTI-PAGE SUPPORT) === */
         @media print {
             .sidebar, .no-print, .btn, .modal, .toast-container, .mobile-toggle, .overlay, .main-content > div:not(#printArea) { display: none !important; }
-            .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; background: white; }
-            body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            @page { size: A4; margin: 0; }
+            
+            /* Reset body height to allow full scrolling for printer */
+            html, body { 
+                height: auto !important; 
+                overflow: visible !important; 
+                background: white !important; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
 
-            #printArea { display: block !important; width: 100%; background: white; font-family: 'Cairo', sans-serif; color: #000; padding: 10mm; box-sizing: border-box; }
+            .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; background: white; }
+            @page { size: A4; margin: 10mm; } /* Adjusted margins */
+
+            /* Ensure Print Area is visible and not scrollable */
+            #printArea { 
+                display: block !important; 
+                width: 100%; 
+                background: white; 
+                font-family: 'Cairo', sans-serif; 
+                color: #000; 
+                /* padding: 10mm;  Removed to let @page handle it */
+                box-sizing: border-box; 
+                position: relative; /* Changed from absolute to relative for flow */
+                top: auto; left: auto;
+                overflow: visible !important; /* Disables scrollbars */
+                height: auto !important;
+            }
+            
+            /* Break the table scrolling behavior for print */
+            .table-wrapper { 
+                flex-grow: 1; 
+                margin-bottom: 20px; 
+                overflow: visible !important; /* Critical fix */
+                height: auto !important;
+                display: block !important;
+            }
             
             /* Header */
             .inv-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 2px solid var(--print-primary) !important; margin-bottom: 25px; }
@@ -338,7 +381,7 @@
             .doc-title { color: var(--print-primary); font-weight: 800; font-size: 18px; margin-bottom: 10px; border: 2px solid var(--print-primary) !important; padding: 4px 15px; border-radius: 6px; display: inline-block; background: var(--print-header-bg); }
 
             /* Meta Boxes */
-            .inv-meta-grid { display: flex; gap: 20px; margin-bottom: 25px; }
+            .inv-meta-grid { display: flex; gap: 20px; margin-bottom: 25px; page-break-inside: avoid; }
             .meta-box { flex: 1; border: 1px solid #e2e8f0 !important; border-radius: 8px; overflow: hidden; background: #fff; } 
             .meta-header { background-color: var(--print-header-bg); padding: 8px 12px; font-size: 12px; font-weight: 700; color: var(--print-primary); border-bottom: 1px solid #e2e8f0 !important; }
             .meta-content { padding: 10px 12px; }
@@ -347,12 +390,14 @@
             .meta-val { font-weight: 700; color: #1e293b; font-family: 'Segoe UI', sans-serif; }
 
             /* Table */
-            .table-wrapper { flex-grow: 1; margin-bottom: 20px; }
-            .inv-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px; table-layout: fixed; border: 1px solid #cbd5e1 !important; border-radius: 8px; overflow: hidden; }
-            .inv-table th { background-color: var(--print-primary) !important; color: white !important; padding: 10px 8px; text-align: center; font-weight: bold; border-bottom: 1px solid #cbd5e1 !important; }
-            .inv-table td { border-bottom: 1px solid #e2e8f0 !important; padding: 8px; color: #334155; border-left: 1px solid #f1f5f9; }
-            .inv-table tr:last-child td { border-bottom: none; }
-            .inv-table td:first-child { border-left: none; }
+            .inv-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+            .inv-table th { background-color: var(--print-primary) !important; color: white !important; padding: 10px 8px; text-align: center; font-weight: bold; border-bottom: 1px solid #cbd5e1 !important; -webkit-print-color-adjust: exact; }
+            .inv-table td { border-bottom: 1px solid #e2e8f0 !important; padding: 8px; color: #334155; border-left: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; }
+            
+             /* Ensure rows don't break awkwardly */
+            .inv-table tr { break-inside: avoid; page-break-inside: avoid; }
+            .inv-table thead { display: table-header-group; }
+            .inv-table tfoot { display: table-footer-group; }
             
             .num-cell { text-align: right; font-family: 'Segoe UI', sans-serif; font-weight: 600; font-variant-numeric: tabular-nums; direction: ltr; padding-right: 12px !important; }
             .center-cell { text-align: center; }
@@ -860,7 +905,7 @@
 </div>
 
 <div class="modal fade" id="invoiceModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl modal-fullscreen-md-down">
+    <div class="modal-dialog modal-fullscreen">
         <div class="modal-content shadow-lg">
             <div class="modal-header bg-gradient bg-primary text-white border-0">
                 <h5 class="modal-title fw-bold"><i class="fa fa-file-invoice me-2"></i> فاتورة جديدة</h5>
@@ -1351,6 +1396,11 @@
             $('#invContactNameSelect').val(val).trigger('change');
             isSyncing = false;
         });
+
+        // --- FIX: Change Prefix on Invoice Type Change ---
+        $('#invType').on('change', function() {
+            updateInvoiceNumberPrefix();
+        });
     });
 
     function updateBranchSelect(contactId) {
@@ -1406,6 +1456,26 @@
         }
     };
 
+    // --- FIX: Logic to handle prefixes and non-repeating numbers ---
+    window.updateInvoiceNumberPrefix = () => {
+        const type = document.getElementById('invType').value;
+        const currentRef = document.getElementById('invRef').value;
+        let prefix = "INV";
+        if(type === 'Purchase Invoice') prefix = "PUR";
+        if(type === 'Credit Note') prefix = "RET";
+
+        // Extract current number part
+        let numPart = "";
+        if(currentRef.includes('-')) {
+            numPart = currentRef.split('-')[1];
+        } else {
+            // If completely empty or first load
+            const lastSeq = (data.profile.lastInvoiceSeq || 1000);
+            numPart = String(lastSeq + 1);
+        }
+        document.getElementById('invRef').value = prefix + "-" + numPart;
+    };
+
     window.openInvoiceModal = () => {
         currentLines = [];
         document.getElementById('invType').value = 'Sales Invoice';
@@ -1414,17 +1484,28 @@
         $('#invContactNameSelect').val(null).trigger('change');
         $('#invContactCodeSelect').val(null).trigger('change');
         document.getElementById('invBranchAddr').style.display='none';
-        const nextNum = data.invoices.length + 1; 
-        document.getElementById('invRef').value = "INV-" + String(1000 + nextNum);
+        
+        // --- FIX: Calculate Unique Number (Never Repeat) ---
+        // We use stored lastSeq. If it doesn't exist, start at 1000.
+        // We add 1 to get the NEW number.
+        const nextNum = (data.profile.lastInvoiceSeq || 1000) + 1;
+        document.getElementById('invRef').value = "INV-" + String(nextNum);
+        
+        // Ensure prefix is correct based on type
+        updateInvoiceNumberPrefix();
+
         renderInvLines();
         new bootstrap.Modal(document.getElementById('invoiceModal')).show();
     };
 
     window.importInvoice = () => {
         let r = document.getElementById('importRef').value.trim();
-        let target = data.invoices.find(i => i.ref === r || i.ref === "INV-" + r);
+        let target = data.invoices.find(i => i.ref === r || i.ref === "INV-" + r || i.ref === "PUR-" + r);
         if(!target) return alert('غير موجود');
         document.getElementById('invType').value = target.type;
+        // Update prefix to match type, but KEEP the generated new number
+        updateInvoiceNumberPrefix(); 
+        
         const c = data.contacts.find(x => x.id === target.contactId);
         if(c) { $('#invContactNameSelect').val(c.id).trigger('change'); }
         currentLines = [...target.lines];
@@ -1509,15 +1590,20 @@
         const rawTax = parseFloat(document.getElementById('invTax').innerText.replace(/,/g, ''));
         const rawTotal = parseFloat(document.getElementById('invGrandTotal').innerText.replace(/,/g, ''));
         
+        const invRef = document.getElementById('invRef').value;
+        const seqNumber = parseInt(invRef.split('-')[1]);
+
         const inv = {
-            id: Date.now(), ref: document.getElementById('invRef').value,
+            id: Date.now(), ref: invRef,
             contactId: cid, type: document.getElementById('invType').value,
             date: document.getElementById('invDate').value, timestamp: getSaudiTimeISO(),
             lines: currentLines, subTotal: rawSub, tax: rawTax, total: rawTotal,
             targetAddress: finalAddress, internalNote: document.getElementById('invInternalNote').value
         };
         
+        // --- FIX: Update the last sequence in database after saving ---
         set(push(ref(db, `users/${currentUser.uid}/invoices`)), inv).then(()=>{
+            update(ref(db, `users/${currentUser.uid}/profile`), { lastInvoiceSeq: seqNumber });
             bootstrap.Modal.getInstance(document.getElementById('invoiceModal')).hide();
             showToast("تم الحفظ");
         });
@@ -1531,8 +1617,11 @@
         if(c) $('#invContactNameSelect').val(c.id).trigger('change');
         document.getElementById('invDate').value=getSaudiDateISO();
         document.getElementById('invInternalNote').value = inv.internalNote || ''; 
-        const nextNum = data.invoices.length + 1; 
-        document.getElementById('invRef').value="RET-" + String(1000 + nextNum);
+        
+        // --- FIX: Get Next Unique Number for Return ---
+        const nextNum = (data.profile.lastInvoiceSeq || 1000) + 1;
+        document.getElementById('invRef').value="RET-" + String(nextNum);
+
         renderInvLines();
         new bootstrap.Modal(document.getElementById('invoiceModal')).show();
     };

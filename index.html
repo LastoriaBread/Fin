@@ -396,8 +396,14 @@
             
              /* Ensure rows don't break awkwardly */
             .inv-table tr { break-inside: avoid; page-break-inside: avoid; }
-            .inv-table thead { display: table-header-group; }
-            .inv-table tfoot { display: table-footer-group; }
+            
+            /* === FIX HEADER REPEATING === */
+            /* Changed from table-header-group to table-row-group to stop repetition */
+            .inv-table thead { display: table-row-group; } 
+            
+            /* === FIX: FOOTER REPEATING (Total Qty) === */
+            /* Changed to table-row-group so it appears ONLY at the end, not every page */
+            .inv-table tfoot { display: table-row-group; } 
             
             .num-cell { text-align: right; font-family: 'Segoe UI', sans-serif; font-weight: 600; font-variant-numeric: tabular-nums; direction: ltr; padding-right: 12px !important; }
             .center-cell { text-align: center; }
@@ -950,7 +956,7 @@
                     </div>
                 </div>
                 
-                <div class="card overflow-hidden mb-4 border shadow-sm">
+                <div class="card mb-4 border shadow-sm">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0 align-middle" style="min-width: 600px;">
                             <thead class="bg-light text-center" style="font-size: 0.9rem;">

@@ -276,15 +276,36 @@
         }
 
         /* === FIX 1: INVOICE MODAL SCROLLING & SIZE === */
-        /* Making the invoice modal full screen and removing inner scroll restrictions */
-        #invoiceModal .table-responsive {
-            max-height: none !important; /* Removed 50vh constraint */
-            overflow: visible !important;
-            border-bottom: 2px solid #e2e8f0;
+        /* FIX APPLIED HERE: Force Modal to Flex Column for proper scrolling */
+        #invoiceModal .modal-dialog {
+            height: 100%;
+            margin: 0;
         }
         
+        #invoiceModal .modal-content {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            border-radius: 0 !important;
+        }
+
+        #invoiceModal .modal-header,
+        #invoiceModal .modal-footer {
+            flex-shrink: 0; /* Header and Footer don't shrink */
+        }
+
         #invoiceModal .modal-body {
-            overflow-y: auto !important; /* Allow body to scroll */
+            flex-grow: 1; /* Body takes all available space */
+            overflow-y: auto !important; /* Force scrollbar */
+            overflow-x: hidden;
+            padding-bottom: 50px;
+        }
+
+        /* Prevent table responsive wrapper from hiding scroll */
+        #invoiceModal .table-responsive {
+            max-height: none !important;
+            overflow: visible !important;
+            border-bottom: 2px solid #e2e8f0;
         }
 
         /* REMOVED MOBILE OPTIMIZATION MEDIA QUERY TO FORCE DESKTOP VIEW */

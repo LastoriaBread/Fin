@@ -191,6 +191,8 @@
             body.print-high-contrast .inv-table th, body.print-high-contrast .inv-table td, body.print-high-contrast .meta-box, body.print-high-contrast .totals-box, body.print-high-contrast .t-row, body.print-high-contrast .doc-title { border: 1px solid #000000 !important; }
             body.print-high-contrast .inv-table th { border-bottom: 2px solid #000000 !important; }
             body.print-high-contrast .t-final { border-top: 2px solid #000000 !important; }
+            /* FIX FOR B&W TOTALS VISIBILITY */
+            body.print-high-contrast .t-final .t-val, body.print-high-contrast .t-final .t-label { color: #000000 !important; }
         }
 
         .select2-results__option--highlighted[aria-selected] { color: white !important; font-weight: bold; border-radius: 10px; margin: 3px 0; transform: translateX(-5px); }

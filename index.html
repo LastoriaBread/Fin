@@ -1032,7 +1032,9 @@
     window.printInvoice = (id, highContrast = false) => {
         const inv = data.invoices.find(i => i.id == id);
         const c = data.contacts.find(x => x.id == inv.contactId);
-        document.getElementById('pDocTitle').innerText = inv.type === 'Credit Note' ? 'إشعار دائن' : 'فاتورة ضريبية';
+        // --- CHANGE 1: Modified Title Logic Here ---
+        document.getElementById('pDocTitle').innerText = inv.type === 'Credit Note' ? 'إشعار دائن / مرتجع' : 'فاتورة ضريبية';
+        
         document.getElementById('pRef').innerText = inv.ref;
         document.getElementById('pDate').innerText = inv.date;
         document.getElementById('pTime').innerText = new Date(inv.timestamp).toLocaleTimeString("en-GB", {timeZone: "Asia/Riyadh"}).slice(0,5);
@@ -1204,7 +1206,12 @@
                 let factor = inv.type === 'Sales Invoice' ? 1 : (inv.type === 'Credit Note' ? -1 : 0);
                 let rowClass = inv.type === 'Credit Note' ? "table-danger text-danger" : "";
                 if(factor !== 0) {
-                    const clientName = data.contacts.find(c => c.id == inv.contactId)?.name || 'عميل غير محدد';
+                    // --- CHANGE 2: Added Branch Logic Here ---
+                    let clientName = data.contacts.find(c => c.id == inv.contactId)?.name || 'عميل غير محدد';
+                    if(inv.targetAddress && inv.targetAddress !== (data.contacts.find(c => c.id == inv.contactId)?.address)) {
+                         clientName += ` <br><span class="text-muted small">(${inv.targetAddress})</span>`;
+                    }
+                    
                     inv.lines.forEach(l => {
                         const item = data.items.find(x => x.id == l.itemId);
                         if(item) {

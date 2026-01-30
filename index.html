@@ -37,12 +37,24 @@
             --print-border: #cbd5e1;
         }
 
-        html, body { height: 100%; width: 100%; overflow-x: hidden; min-width: 1280px; }
-        body { font-family: 'Cairo', sans-serif; background-color: var(--bg-body); color: var(--text-main); -webkit-tap-highlight-color: transparent; }
+        /* --- Scroll Fix: Allow natural height expansion --- */
+        html {
+            overflow-y: scroll; /* Forces scrollbar to stay, preventing jump */
+            height: auto;
+        }
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: var(--bg-body); 
+            color: var(--text-main); 
+            min-height: 100vh;
+            height: auto !important; /* Crucial: Allows body to grow with content */
+            overflow-x: hidden; 
+            min-width: 1024px;
+        }
 
         /* Signature Class */
         .signature-style {
-            font-family: 'Aref Ruqaa', serif; /* الخط الجديد */
+            font-family: 'Aref Ruqaa', serif;
             font-size: 1.6rem;
             font-weight: 700;
             color: #1e293b;
@@ -79,10 +91,11 @@
 
         .sidebar {
             min-height: 100vh; background: linear-gradient(180deg, var(--sidebar-gradient-start) 0%, var(--sidebar-gradient-end) 100%);
-            color: white; box-shadow: 4px 0 20px rgba(0,0,0,0.1); position: fixed; right: 0; top: 0; width: 270px; z-index: 1050; transition: 0.3s;
+            color: white; box-shadow: 4px 0 20px rgba(0,0,0,0.1); position: fixed; right: 0; top: 0; bottom: 0; width: 270px; z-index: 1050; transition: 0.3s;
+            overflow-y: auto; /* Internal scroll for sidebar */
         }
         .sidebar-brand { padding: 30px 20px; text-align: center; background: rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .nav-link { color: #e0e7ff; padding: 14px 25px; margin: 8px 15px; border-radius: 12px; font-weight: 600; transition: all 0.3s ease-in-out; display: flex; align-items: center; border: 1px solid transparent !important; opacity: 0.9; }
+        .nav-link { color: #e0e7ff; padding: 14px 25px; margin: 8px 15px; border-radius: 12px; font-weight: 600; transition: all 0.3s ease-in-out; display: flex; align-items: center; border: 1px solid transparent !important; opacity: 0.9; cursor: pointer; }
         .nav-link i { margin-left: 15px; width: 25px; text-align: center; font-size: 1.1rem; }
         
         .nav-item:nth-child(3n+1) .nav-link:hover, .nav-item:nth-child(3n+1) .nav-link.active { background: linear-gradient(135deg, #6366f1, #d946ef) !important; box-shadow: 0 0 15px rgba(217, 70, 239, 0.6); color: white; transform: translateX(-5px); opacity: 1; }
@@ -124,19 +137,17 @@
         .item-glow-container .select2-selection { transition: all 0.3s ease-in-out; }
         .item-glow-container:hover .select2-selection { box-shadow: 0 0 15px rgba(79, 70, 229, 0.6) !important; border-color: var(--primary-color) !important; transform: scale(1.01); z-index: 50; }
 
-        #invoiceModal .modal-dialog { height: 100%; margin: 0; }
-        #invoiceModal .modal-content { height: 100%; display: flex; flex-direction: column; border-radius: 0 !important; }
-        #invoiceModal .modal-header, #invoiceModal .modal-footer { flex-shrink: 0; }
-        #invoiceModal .modal-body { flex-grow: 1; overflow-y: auto !important; overflow-x: hidden; padding-bottom: 50px; }
-        #invoiceModal .table-responsive { max-height: none !important; overflow: visible !important; border-bottom: 2px solid #e2e8f0; }
-
         .badge { padding: 8px 12px; border-radius: 8px; font-weight: 700; }
         .badge-soft-success { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0 !important; }
         .badge-soft-danger { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca !important; }
         .badge-soft-warning { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a !important; }
 
+        /* Pagination Controls */
+        .pagination-controls { display: flex; justify-content: center; align-items: center; margin-top: 20px; gap: 15px; }
+        .page-info { font-weight: bold; color: var(--primary-color); }
+
         @media print {
-            .sidebar, .no-print, .btn, .modal, .toast-container, .mobile-toggle, .overlay, .main-content > div:not(#printArea) { display: none !important; }
+            .sidebar, .no-print, .btn, .modal, .toast-container, .mobile-toggle, .overlay, .main-content > div:not(#printArea), .search-box-container, .pagination-controls { display: none !important; }
             html, body { height: auto !important; overflow: visible !important; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; min-width: 0 !important; }
             .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; background: white; }
             @page { size: A4; margin: 10mm; }
@@ -191,7 +202,6 @@
             body.print-high-contrast .inv-table th, body.print-high-contrast .inv-table td, body.print-high-contrast .meta-box, body.print-high-contrast .totals-box, body.print-high-contrast .t-row, body.print-high-contrast .doc-title { border: 1px solid #000000 !important; }
             body.print-high-contrast .inv-table th { border-bottom: 2px solid #000000 !important; }
             body.print-high-contrast .t-final { border-top: 2px solid #000000 !important; }
-            /* FIX FOR B&W TOTALS VISIBILITY */
             body.print-high-contrast .t-final .t-val, body.print-high-contrast .t-final .t-label { color: #000000 !important; }
         }
 
@@ -255,6 +265,7 @@
             <li class="nav-item"><a class="nav-link" onclick="showSection('items')"><i class="fa-solid fa-box-open"></i> المنتجات</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('contacts')"><i class="fa-solid fa-users-line"></i> العملاء والموردين</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('manualEntries')"><i class="fa-solid fa-money-bill-transfer"></i> قيود يدوية</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="showSection('expenses')"><i class="fa-solid fa-wallet"></i> المصروفات</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('productReports')"><i class="fa-solid fa-chart-column"></i> تقرير الأصناف المباعة</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('reports')"><i class="fa-solid fa-chart-pie"></i> كشف الحساب</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showSection('settings')"><i class="fa-solid fa-sliders"></i> إعدادات الشركة</a></li>
@@ -288,7 +299,7 @@
                 <div class="col-md-3">
                     <div class="stats-card purchases">
                          <div class="d-flex justify-content-between align-items-start">
-                            <div><p>المشتريات</p><h3 id="dashPurchases">0.00</h3></div>
+                            <div><p>المشتريات والمصروفات</p><h3 id="dashPurchases">0.00</h3></div>
                             <div class="icon-box"><i class="fa-solid fa-cart-shopping"></i></div>
                         </div>
                     </div>
@@ -296,7 +307,7 @@
                 <div class="col-md-3">
                     <div class="stats-card net">
                          <div class="d-flex justify-content-between align-items-start">
-                            <div><p>صافي الموقف</p><h3 id="dashNet">0.00</h3></div>
+                            <div><p>صافي الموقف (الربح)</p><h3 id="dashNet">0.00</h3></div>
                             <div class="icon-box"><i class="fa-solid fa-scale-balanced"></i></div>
                         </div>
                     </div>
@@ -304,7 +315,7 @@
             </div>
              <div class="row g-4">
                 <div class="col-md-4">
-                    <button onclick="showSection('invoices'); openInvoiceModal()" class="btn btn-outline-primary w-100 p-4 h-100 border-2 fw-bold d-flex flex-column align-items-center justify-content-center gap-2">
+                    <button onclick="openInvoiceForm()" class="btn btn-outline-primary w-100 p-4 h-100 border-2 fw-bold d-flex flex-column align-items-center justify-content-center gap-2">
                         <i class="fa fa-plus-circle fa-3x"></i> <span class="fs-5">فاتورة جديدة</span>
                     </button>
                 </div>
@@ -326,7 +337,7 @@
                 <h3 class="fw-bold text-dark">الفواتير</h3>
                 <div>
                     <button class="btn btn-success me-2 text-white" onclick="exportToExcel('invoicesTableRaw', 'Invoices_Report')"><i class="fa fa-file-excel me-2"></i> Excel</button>
-                    <button class="btn btn-primary" onclick="openInvoiceModal()"><i class="fa fa-plus ms-2"></i> إنشاء فاتورة</button>
+                    <button class="btn btn-primary" onclick="openInvoiceForm()"><i class="fa fa-plus ms-2"></i> إنشاء فاتورة</button>
                 </div>
             </div>
             <div class="search-box-container">
@@ -339,6 +350,83 @@
                         <thead><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>العميل/المورد</th><th>النوع</th><th>الإجمالي</th><th class="no-print">إجراءات</th></tr></thead>
                         <tbody id="invoicesTable"></tbody>
                     </table>
+                </div>
+                <div class="pagination-controls pt-3 border-top">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="changeInvPage(-1)"><i class="fa fa-chevron-right"></i> السابق</button>
+                    <span id="invPageInfo" class="page-info">صفحة 1</span>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="changeInvPage(1)">التالي <i class="fa fa-chevron-left"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div id="invoiceFormSection" class="section-content" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+                <h3 class="fw-bold text-dark"><i class="fa fa-file-invoice me-2"></i> تفاصيل الفاتورة</h3>
+                <div>
+                    <button class="btn btn-secondary me-2 fw-bold" onclick="showSection('invoices')"><i class="fa fa-arrow-right me-2"></i> رجوع للقائمة</button>
+                    <button class="btn btn-success px-4 fw-bold shadow" onclick="saveInvoice()"><i class="fa fa-save me-2"></i> حفظ الفاتورة</button>
+                </div>
+            </div>
+            
+            <div class="row mb-4 bg-white p-3 rounded-4 shadow-sm mx-1 align-items-center border">
+                <div class="col-md-6">
+                    <label class="small text-muted mb-1 fw-bold">استيراد من فاتورة سابقة</label>
+                    <div class="input-group">
+                        <input type="text" id="importRef" class="form-control border-end-0" placeholder="رقم الفاتورة (مثال: INV-1005)">
+                        <button class="btn btn-outline-primary fw-bold px-4" onclick="importInvoice()">استيراد</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4 mb-4">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="small text-muted fw-bold mb-1">النوع</label>
+                        <select id="invType" class="form-select bg-white">
+                            <option value="Sales Invoice">فاتورة مبيعات</option>
+                            <option value="Purchase Invoice">فاتورة مشتريات</option>
+                            <option value="Credit Note">إشعار دائن / مرتجع</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                            <label class="small text-muted fw-bold mb-1">اسم العميل/المورد</label>
+                            <select id="invContactNameSelect" class="form-select select2" style="width: 100%;"></select>
+                            <select id="invBranchAddr" class="form-select mt-2 text-primary fw-bold shadow-sm" style="display:none; font-size: 0.8rem;"></select>
+                    </div>
+                    <div class="col-md-2">
+                            <label class="small text-muted fw-bold mb-1">الكود</label>
+                            <select id="invContactCodeSelect" class="form-select select2" style="width: 100%;"></select>
+                    </div>
+                        <div class="col-md-1 d-flex align-items-end"><button class="btn btn-primary w-100" onclick="openContactModal()" title="إضافة عميل جديد"><i class="fa fa-plus"></i></button></div>
+                    <div class="col-md-2"><label class="small text-muted fw-bold mb-1">التاريخ</label><input type="date" id="invDate" class="form-control bg-white"></div>
+                    <div class="col-md-1"><label class="small text-muted fw-bold mb-1">الرقم</label><input type="text" id="invRef" class="form-control bg-light fw-bold text-primary text-center" readonly style="font-size: 0.9rem;"></div>
+                </div>
+            </div>
+            
+            <div class="card mb-4 border shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 align-middle" style="min-width: 600px;">
+                        <thead class="bg-light text-center" style="font-size: 0.9rem;"><tr><th width="15%">كود الصنف</th><th width="25%">الصنف</th><th width="15%">السعر</th><th width="10%">الكمية</th><th width="15%">ضريبة (15%)</th><th width="15%">الإجمالي</th><th width="5%"></th></tr></thead>
+                        <tbody id="invLines" class="bg-white"></tbody>
+                    </table>
+                </div>
+                <div class="p-3 bg-light d-flex justify-content-between border-top">
+                    <button class="btn btn-sm btn-outline-primary fw-bold" onclick="addInvLine()"><i class="fa fa-plus me-1"></i> إضافة سطر</button>
+                    <button class="btn btn-sm btn-outline-success fw-bold" onclick="openItemModal()"><i class="fa fa-box-open me-1"></i> إضافة صنف جديد</button>
+                </div>
+            </div>
+
+            <div class="row justify-content-end mb-5">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label text-muted small fw-bold">ملاحظات داخلية (تظهر في كشف الحساب فقط)</label>
+                    <input type="text" id="invInternalNote" class="form-control" placeholder="أدخل أي ملاحظات هنا...">
+                </div>
+                <div class="col-md-4">
+                    <div class="card p-4 bg-white border">
+                        <div class="d-flex justify-content-between mb-2"><span class="text-muted fw-bold">المجموع قبل الضريبة:</span><span id="invSubTotal" class="fw-bold">0.00</span></div>
+                        <div class="d-flex justify-content-between mb-2"><span class="text-muted fw-bold">ضريبة القيمة المضافة:</span><span id="invTax" class="text-danger fw-bold">0.00</span></div>
+                        <div class="border-top pt-3 mt-2 d-flex justify-content-between align-items-center"><span class="h6 fw-bold mb-0">الإجمالي النهائي:</span><span id="invGrandTotal" class="h4 text-primary fw-bold mb-0">0.00</span></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -421,6 +509,53 @@
             </div>
         </div>
 
+        <div id="expenses" class="section-content" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold text-dark">إدارة المصروفات</h3>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card p-3 mb-3 border-warning border-2">
+                        <h6 class="fw-bold text-warning mb-3">إضافة تصنيف جديد</h6>
+                        <div class="input-group">
+                            <input type="text" id="expCatName" class="form-control" placeholder="اسم التصنيف (مثال: إيجار)">
+                            <button class="btn btn-warning text-white" onclick="saveExpCategory()">إضافة</button>
+                        </div>
+                    </div>
+                    <div class="card p-4">
+                        <h5 class="mb-4 text-danger fw-bold"><i class="fa fa-wallet me-2"></i> تسجيل مصروف</h5>
+                        <label class="small text-muted fw-bold">التصنيف</label>
+                        <select id="expCategorySelect" class="form-select mb-3"></select>
+                        
+                        <label class="small text-muted fw-bold">التاريخ</label>
+                        <input type="date" id="expDate" class="form-control mb-3">
+                        
+                        <label class="small text-muted fw-bold">المبلغ</label>
+                        <input type="number" id="expAmount" class="form-control mb-3 fw-bold text-center text-danger" placeholder="0.00">
+                        
+                        <label class="small text-muted fw-bold">ملاحظات</label>
+                        <input type="text" id="expNote" class="form-control mb-4" placeholder="شرح المصروف...">
+                        
+                        <button class="btn btn-danger w-100 fw-bold shadow-sm" onclick="saveExpense()">حفظ المصروف</button>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="custom-table-container">
+                        <div class="d-flex justify-content-between mb-3">
+                            <h5 class="fw-bold">سجل المصروفات</h5>
+                            <button class="btn btn-sm btn-success" onclick="exportToExcel('expensesTableRaw', 'Expenses_Report')">Excel</button>
+                        </div>
+                         <div class="table-responsive">
+                            <table class="table table-hover" id="expensesTableRaw">
+                                <thead><tr><th>التاريخ</th><th>التصنيف</th><th>المبلغ</th><th>ملاحظات</th><th>إجراء</th></tr></thead>
+                                <tbody id="expensesTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="productReports" class="section-content" style="display:none;">
             <h3 class="fw-bold mb-4 text-dark">تقرير مبيعات الأصناف وتكلفتها</h3>
             <div class="card p-4 mb-4">
@@ -489,7 +624,7 @@
                 <div class="row mt-5 pt-4">
                     <div class="col-6"></div> <div class="col-6 text-center">
                         <div class="signature-style">
-                            قسم المالية - مخابز قصة خبزة للمعجنات
+                            قسم المالية - المحاسبة
                         </div>
                         <p class="text-muted small mt-2 fw-bold">التوقيع المعتمد</p>
                     </div>
@@ -522,83 +657,6 @@
             </div>
         </div>
 
-    </div>
-</div>
-
-<div class="modal fade" id="invoiceModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-fullscreen">
-        <div class="modal-content shadow-lg">
-            <div class="modal-header bg-gradient bg-primary text-white border-0">
-                <h5 class="modal-title fw-bold"><i class="fa fa-file-invoice me-2"></i> فاتورة جديدة</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body bg-light">
-                 <div class="row mb-4 bg-white p-3 rounded-4 shadow-sm mx-1 align-items-center border">
-                    <div class="col-md-6">
-                        <label class="small text-muted mb-1 fw-bold">استيراد من فاتورة سابقة</label>
-                        <div class="input-group">
-                            <input type="text" id="importRef" class="form-control border-end-0" placeholder="رقم الفاتورة (مثال: INV-1005)">
-                            <button class="btn btn-outline-primary fw-bold px-4" onclick="importInvoice()">استيراد</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card p-4 mb-4">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label class="small text-muted fw-bold mb-1">النوع</label>
-                            <select id="invType" class="form-select bg-white">
-                                <option value="Sales Invoice">فاتورة مبيعات</option>
-                                <option value="Purchase Invoice">فاتورة مشتريات</option>
-                                <option value="Credit Note">إشعار دائن / مرتجع</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                             <label class="small text-muted fw-bold mb-1">اسم العميل/المورد</label>
-                             <select id="invContactNameSelect" class="form-select select2" style="width: 100%;"></select>
-                             <select id="invBranchAddr" class="form-select mt-2 text-primary fw-bold shadow-sm" style="display:none; font-size: 0.8rem;"></select>
-                        </div>
-                        <div class="col-md-2">
-                             <label class="small text-muted fw-bold mb-1">الكود</label>
-                             <select id="invContactCodeSelect" class="form-select select2" style="width: 100%;"></select>
-                        </div>
-                         <div class="col-md-1 d-flex align-items-end"><button class="btn btn-primary w-100" onclick="openContactModal()" title="إضافة عميل جديد"><i class="fa fa-plus"></i></button></div>
-                        <div class="col-md-2"><label class="small text-muted fw-bold mb-1">التاريخ</label><input type="date" id="invDate" class="form-control bg-white"></div>
-                        <div class="col-md-1"><label class="small text-muted fw-bold mb-1">الرقم</label><input type="text" id="invRef" class="form-control bg-light fw-bold text-primary text-center" readonly style="font-size: 0.9rem;"></div>
-                    </div>
-                </div>
-                
-                <div class="card mb-4 border shadow-sm">
-                    <div class="table-responsive">
-                        <table class="table table-bordered mb-0 align-middle" style="min-width: 600px;">
-                            <thead class="bg-light text-center" style="font-size: 0.9rem;"><tr><th width="15%">كود الصنف</th><th width="25%">الصنف</th><th width="15%">السعر</th><th width="10%">الكمية</th><th width="15%">ضريبة (15%)</th><th width="15%">الإجمالي</th><th width="5%"></th></tr></thead>
-                            <tbody id="invLines" class="bg-white"></tbody>
-                        </table>
-                    </div>
-                    <div class="p-3 bg-light d-flex justify-content-between border-top">
-                        <button class="btn btn-sm btn-outline-primary fw-bold" onclick="addInvLine()"><i class="fa fa-plus me-1"></i> إضافة سطر</button>
-                        <button class="btn btn-sm btn-outline-success fw-bold" onclick="openItemModal()"><i class="fa fa-box-open me-1"></i> إضافة صنف جديد</button>
-                    </div>
-                </div>
-
-                <div class="row justify-content-end">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label text-muted small fw-bold">ملاحظات داخلية (تظهر في كشف الحساب فقط)</label>
-                        <input type="text" id="invInternalNote" class="form-control" placeholder="أدخل أي ملاحظات هنا...">
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card p-4 bg-white border">
-                            <div class="d-flex justify-content-between mb-2"><span class="text-muted fw-bold">المجموع قبل الضريبة:</span><span id="invSubTotal" class="fw-bold">0.00</span></div>
-                            <div class="d-flex justify-content-between mb-2"><span class="text-muted fw-bold">ضريبة القيمة المضافة:</span><span id="invTax" class="text-danger fw-bold">0.00</span></div>
-                            <div class="border-top pt-3 mt-2 d-flex justify-content-between align-items-center"><span class="h6 fw-bold mb-0">الإجمالي النهائي:</span><span id="invGrandTotal" class="h4 text-primary fw-bold mb-0">0.00</span></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer border-top-0 bg-light">
-                <button class="btn btn-light text-muted fw-bold" data-bs-dismiss="modal">إلغاء</button>
-                <button class="btn btn-success px-5 fw-bold shadow" onclick="saveInvoice()">حفظ الفاتورة</button>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -732,8 +790,12 @@
     const auth = getAuth(app);
     const db = getDatabase(app);
     let currentUser = null;
-    let data = { profile: {}, contacts: [], items: [], invoices: [], payments: [] };
+    let data = { profile: {}, contacts: [], items: [], invoices: [], payments: [], expenses: [], expenseCategories: [] };
     let currentLines = [];
+    
+    // Pagination Variables
+    let invCurrentPage = 1;
+    const invItemsPerPage = 20;
 
     window.getSaudiDateISO = () => {
         const d = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Riyadh"}));
@@ -789,9 +851,11 @@
                 contacts: Object.keys(v.contacts || {}).map(k => ({ ...v.contacts[k], key: k })),
                 items: Object.keys(v.items || {}).map(k => ({ ...v.items[k], key: k })),
                 invoices: Object.keys(v.invoices || {}).map(k => ({ ...v.invoices[k], key: k })),
-                payments: Object.keys(v.payments || {}).map(k => ({ ...v.payments[k], key: k }))
+                payments: Object.keys(v.payments || {}).map(k => ({ ...v.payments[k], key: k })),
+                expenses: Object.keys(v.expenses || {}).map(k => ({ ...v.expenses[k], key: k })),
+                expenseCategories: Object.keys(v.expenseCategories || {}).map(k => ({ ...v.expenseCategories[k], key: k }))
             };
-            if(document.getElementById('invoiceModal') && document.getElementById('invoiceModal').classList.contains('show')) { renderInvLines(); }
+            // NOTE: We don't check for 'invoiceModal' anymore since it's a section now.
             updateUI();
         });
     }
@@ -813,24 +877,31 @@
     }
 
     function updateUI() {
-        let sales=0, purchases=0, received=0;
+        let sales=0, purchases=0, received=0, totalExpenses=0;
+        
         data.invoices.forEach(i => { 
             if(i.type==='Sales Invoice') sales+=i.total; 
             else if(i.type==='Purchase Invoice') purchases+=i.total; 
             else sales-=i.total; 
         });
+        
         data.payments.forEach(p => { 
             if(p.type==='Receipt') received+=Number(p.amount); 
             if(p.type === 'Adjustment' && Number(p.amount) > 0) sales += Number(p.amount);
         });
 
+        data.expenses.forEach(e => {
+            totalExpenses += Number(e.amount);
+        });
+
         document.getElementById('dashSales').innerText = formatMoney(sales);
-        document.getElementById('dashPurchases').innerText = formatMoney(purchases);
+        document.getElementById('dashPurchases').innerText = formatMoney(purchases + totalExpenses);
         document.getElementById('dashReceived').innerText = formatMoney(received);
-        document.getElementById('dashNet').innerText = formatMoney(sales - received);
+        // Net Position = Sales - Purchases - Expenses
+        document.getElementById('dashNet').innerText = formatMoney(sales - (purchases + totalExpenses));
         document.getElementById('sidebarBusName').innerText = data.profile.businessNameAr || "The Internal Reporting System";
 
-        renderInvoicesTable(); renderItemsTable(); renderContactsTable(); renderPaymentsTable(); populateSelects();
+        renderInvoicesTable(); renderItemsTable(); renderContactsTable(); renderPaymentsTable(); renderExpensesTable(); populateSelects();
 
         document.getElementById('setBusNameAr').value = data.profile.businessNameAr || '';
         document.getElementById('setBusNameEn').value = data.profile.businessNameEn || '';
@@ -848,6 +919,8 @@
         document.getElementById(id).style.display='block'; 
         document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active')); 
         document.getElementById('mainSidebar').classList.remove('active');
+        // If we go back to dashboard, make sure active state is reflected
+        if(id === 'dashboard') document.querySelector('a[onclick="showSection(\'dashboard\')"]').classList.add('active');
     };
     
     function populateSelects() {
@@ -860,10 +933,19 @@
         const codeSelect = document.getElementById('invContactCodeSelect');
         nameSelect.innerHTML = '<option></option>'; codeSelect.innerHTML = '<option></option>'; 
         data.contacts.forEach(c => { nameSelect.add(new Option(c.name, c.id)); codeSelect.add(new Option(c.code, c.id)); });
+
+        // Populate Expense Categories
+        const expCatSelect = document.getElementById('expCategorySelect');
+        expCatSelect.innerHTML = placeholder;
+        data.expenseCategories.forEach(cat => {
+            expCatSelect.add(new Option(cat.name, cat.name));
+        });
     }
 
     $(document).ready(function() {
-        $('.select2').select2({ theme: 'bootstrap-5', placeholder: 'اختر...', allowClear: true, dropdownParent: $('#invoiceModal') });
+        // Select2 for the full page invoice section
+        $('.select2').select2({ theme: 'bootstrap-5', placeholder: 'اختر...', allowClear: true });
+        
         let isSyncing = false;
         $('#invContactNameSelect').on('change', function() { if (!isSyncing) { isSyncing=true; $('#invContactCodeSelect').val($(this).val()).trigger('change'); updateBranchSelect($(this).val()); renderInvLines(); isSyncing=false; } });
         $('#invContactCodeSelect').on('change', function() { if (!isSyncing) { isSyncing=true; $('#invContactNameSelect').val($(this).val()).trigger('change'); isSyncing=false; } });
@@ -882,9 +964,29 @@
         }
     }
 
-    function renderInvoicesTable() {
+    // --- Invoice Logic with Pagination ---
+    window.renderInvoicesTable = () => {
         const t = document.getElementById('invoicesTable'); t.innerHTML = '';
-        [...data.invoices].sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(i => {
+        
+        // 1. Sort Newest to Oldest
+        const sortedInvoices = [...data.invoices].sort((a,b) => {
+             const timeA = a.timestamp ? new Date(a.timestamp).getTime() : new Date(a.date).getTime();
+             const timeB = b.timestamp ? new Date(b.timestamp).getTime() : new Date(b.date).getTime();
+             return timeB - timeA;
+        });
+
+        // 2. Pagination Logic
+        const totalItems = sortedInvoices.length;
+        const totalPages = Math.ceil(totalItems / invItemsPerPage) || 1;
+        if (invCurrentPage > totalPages) invCurrentPage = totalPages;
+        if (invCurrentPage < 1) invCurrentPage = 1;
+
+        const start = (invCurrentPage - 1) * invItemsPerPage;
+        const end = start + invItemsPerPage;
+        const pageItems = sortedInvoices.slice(start, end);
+
+        // 3. Render
+        pageItems.forEach(i => {
             const c = data.contacts.find(x => x.id == i.contactId) || {name: 'غير محدد'};
             const typeClass = i.type==='Sales Invoice'?'success':(i.type==='Credit Note'?'danger':'warning');
             const typeName = i.type==='Sales Invoice'?'فاتورة مبيعات':(i.type==='Purchase Invoice'?'مشتريات':'مرتجع');
@@ -900,7 +1002,15 @@
                 </td>
             </tr>`;
         });
-    }
+
+        // Update Info
+        document.getElementById('invPageInfo').innerText = `صفحة ${invCurrentPage} من ${totalPages}`;
+    };
+
+    window.changeInvPage = (dir) => {
+        invCurrentPage += dir;
+        renderInvoicesTable();
+    };
 
     window.deleteInvoice = (key) => {
         if(!currentUser) return;
@@ -919,7 +1029,8 @@
         document.getElementById('invRef').value = prefix + "-" + numPart;
     };
 
-    window.openInvoiceModal = () => {
+    // --- NEW: Open Invoice Page (Not Modal) ---
+    window.openInvoiceForm = () => {
         currentLines = [];
         document.getElementById('invType').value = 'Sales Invoice';
         document.getElementById('invDate').value = getSaudiDateISO();
@@ -931,7 +1042,9 @@
         document.getElementById('invRef').value = "INV-" + String(nextNum);
         updateInvoiceNumberPrefix();
         renderInvLines();
-        new bootstrap.Modal(document.getElementById('invoiceModal')).show();
+        
+        // SWITCH TO SECTION
+        showSection('invoiceFormSection');
     };
 
     window.importInvoice = () => {
@@ -973,7 +1086,8 @@
         document.getElementById('invTax').innerText = formatMoney(tax);
         document.getElementById('invGrandTotal').innerText = formatMoney(sub + tax);
 
-        $('.item-select-search').select2({ theme: 'bootstrap-5', placeholder: 'بحث عن صنف...', dropdownParent: $('#invoiceModal'), width: '100%' });
+        // Select2 within the page section
+        $('.item-select-search').select2({ theme: 'bootstrap-5', placeholder: 'بحث عن صنف...', width: '100%' });
         $('.item-select-search').on('change', function() { const idx = $(this).data('index'); const val = $(this).val(); if(currentLines[idx].itemId != val) updLine(idx, 'id', val); });
     };
 
@@ -1001,7 +1115,12 @@
         const invRef = document.getElementById('invRef').value;
         const seqNumber = parseInt(invRef.split('-')[1]);
         const inv = { id: Date.now(), ref: invRef, contactId: cid, type: document.getElementById('invType').value, date: document.getElementById('invDate').value, timestamp: getSaudiTimeISO(), lines: currentLines, subTotal: rawSub, tax: rawTax, total: rawTotal, targetAddress: finalAddress, internalNote: document.getElementById('invInternalNote').value };
-        set(push(ref(db, `users/${currentUser.uid}/invoices`)), inv).then(()=>{ update(ref(db, `users/${currentUser.uid}/profile`), { lastInvoiceSeq: seqNumber }); bootstrap.Modal.getInstance(document.getElementById('invoiceModal')).hide(); showToast("تم الحفظ"); });
+        set(push(ref(db, `users/${currentUser.uid}/invoices`)), inv).then(()=>{ 
+            update(ref(db, `users/${currentUser.uid}/profile`), { lastInvoiceSeq: seqNumber }); 
+            // Return to invoices list after saving
+            showSection('invoices'); 
+            showToast("تم الحفظ"); 
+        });
     };
 
     window.createReturn = (id) => {
@@ -1014,6 +1133,10 @@
             newType = "Sales Invoice";
             prefix = "INV";
         }
+        
+        // Show Form Section
+        showSection('invoiceFormSection');
+
         document.getElementById('invType').value = newType;
 
         const c = data.contacts.find(x => x.id === inv.contactId);
@@ -1026,13 +1149,11 @@
         document.getElementById('invRef').value = prefix + "-" + String(nextNum);
 
         renderInvLines();
-        new bootstrap.Modal(document.getElementById('invoiceModal')).show();
     };
 
     window.printInvoice = (id, highContrast = false) => {
         const inv = data.invoices.find(i => i.id == id);
         const c = data.contacts.find(x => x.id == inv.contactId);
-        // --- CHANGE 1: Modified Title Logic Here ---
         document.getElementById('pDocTitle').innerText = inv.type === 'Credit Note' ? 'اشعار دائن ' : 'فاتورة ضريبية';
         
         document.getElementById('pRef').innerText = inv.ref;
@@ -1197,6 +1318,52 @@
         set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
 
+    // --- EXPENSES LOGIC ---
+    window.saveExpCategory = () => {
+        const name = document.getElementById('expCatName').value;
+        if(!name) return alert('أدخل اسم التصنيف');
+        set(push(ref(db, `users/${currentUser.uid}/expenseCategories`)), { id: Date.now(), name: name }).then(() => {
+            document.getElementById('expCatName').value = '';
+            showToast('تمت إضافة التصنيف');
+        });
+    };
+
+    window.saveExpense = () => {
+        const cat = document.getElementById('expCategorySelect').value;
+        const amount = document.getElementById('expAmount').value;
+        const date = document.getElementById('expDate').value;
+        const note = document.getElementById('expNote').value;
+        
+        if(!cat || !amount || !date) return alert('يرجى ملء كافة البيانات');
+        
+        const exp = { id: Date.now(), category: cat, amount: Number(amount), date: date, note: note };
+        set(push(ref(db, `users/${currentUser.uid}/expenses`)), exp).then(() => {
+            document.getElementById('expAmount').value = '';
+            document.getElementById('expNote').value = '';
+            showToast('تم حفظ المصروف');
+        });
+    };
+
+    function renderExpensesTable() {
+        const t = document.getElementById('expensesTable'); t.innerHTML = '';
+        data.expenses.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(e => {
+            t.innerHTML += `<tr>
+                <td>${e.date}</td>
+                <td><span class="badge bg-warning text-dark">${e.category}</span></td>
+                <td class="fw-bold text-danger" dir="ltr">${formatMoney(e.amount)}</td>
+                <td class="text-muted small">${e.note || '-'}</td>
+                <td><button class="btn btn-sm btn-outline-danger" onclick="deleteExpense('${e.key}')"><i class="fa fa-trash"></i></button></td>
+            </tr>`;
+        });
+    }
+
+    window.deleteExpense = (key) => {
+        if(confirm('حذف هذا المصروف؟')) {
+             remove(ref(db, `users/${currentUser.uid}/expenses/${key}`)).then(() => showToast('تم الحذف'));
+        }
+    };
+
+
     window.generateProductSales = () => {
         const d1 = document.getElementById('repProdFrom').value; const d2 = document.getElementById('repProdTo').value;
         if(!d1 || !d2) return alert('يرجى تحديد الفترة من وإلى');
@@ -1206,7 +1373,6 @@
                 let factor = inv.type === 'Sales Invoice' ? 1 : (inv.type === 'Credit Note' ? -1 : 0);
                 let rowClass = inv.type === 'Credit Note' ? "table-danger text-danger" : "";
                 if(factor !== 0) {
-                    // --- CHANGE 2: Added Branch Logic Here ---
                     let clientName = data.contacts.find(c => c.id == inv.contactId)?.name || 'عميل غير محدد';
                     if(inv.targetAddress && inv.targetAddress !== (data.contacts.find(c => c.id == inv.contactId)?.address)) {
                          clientName += ` <br><span class="text-muted small">(${inv.targetAddress})</span>`;
@@ -1228,7 +1394,6 @@
         rows.forEach(r => { tb.innerHTML += `<tr class="${r.class}"><td>${r.date}</td><td><span class="badge bg-light text-dark border border-secondary">${r.code}</span></td><td class="fw-bold">${r.name}</td><td>${r.client}</td><td class="small fw-bold">${r.ref}</td><td class="fw-bold" style="font-size:1.1rem">${r.qty}</td><td class="fw-bold text-primary" dir="ltr">${formatMoney(r.totalSale)}</td><td class="fw-bold text-danger" dir="ltr">${formatMoney(r.totalCost)}</td><td class="fw-bold text-success" dir="ltr">${formatMoney(r.netProfit)}</td></tr>`; });
     };
 
-    // --- UPDATED SOA GENERATION WITH HEADER & SIGNATURE ---
     window.generateSOA = () => {
         const cid = document.getElementById('repContact').value;
         const dFrom = document.getElementById('repFrom').value;
@@ -1299,5 +1464,3 @@
 </script>
 </body>
 </html>
-
-

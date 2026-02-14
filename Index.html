@@ -522,6 +522,7 @@
                     </div>
                     <div class="card p-4">
                         <h5 class="mb-4 text-danger fw-bold"><i class="fa fa-wallet me-2"></i> تسجيل مصروف</h5>
+                        <input type="hidden" id="expFirebaseKey">
                         <label class="small text-muted fw-bold">التصنيف</label>
                         <select id="expCategorySelect" class="form-select mb-3"></select>
                         
@@ -534,7 +535,7 @@
                         <label class="small text-muted fw-bold">ملاحظات</label>
                         <input type="text" id="expNote" class="form-control mb-4" placeholder="شرح المصروف...">
                         
-                        <button class="btn btn-danger w-100 fw-bold shadow-sm" onclick="saveExpense()">حفظ المصروف</button>
+                        <button id="btnSaveExpense" class="btn btn-danger w-100 fw-bold shadow-sm" onclick="saveExpense()">حفظ المصروف</button>
                     </div>
                 </div>
                 <div class="col-md-8">
@@ -1338,7 +1339,7 @@
         set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
 
-    // --- EXPENSES LOGIC (UPDATED WITH CRUD MODAL) ---
+    // --- EXPENSES LOGIC (UPDATED WITH CASCADING UPDATE & EDIT) ---
     
     // Open the management modal
     window.openCategoryModal = () => {
@@ -1367,7 +1368,7 @@
         });
     };
 
-    // Save (Create or Update)
+    // Save (Create or Update with Cascade)
     window.saveCategory = () => {
         const name = document.getElementById('catNameInput').value;
         const key = document.getElementById('catFirebaseKey').value;
@@ -1375,18 +1376,34 @@
         if(!name) return alert('أدخل اسم التصنيف');
         
         if (key) {
-            // Update Existing
+            // Update Existing & Cascade
+            const oldCat = data.expenseCategories.find(c => c.key === key);
+            const oldName = oldCat ? oldCat.name : '';
+            
             update(ref(db, `users/${currentUser.uid}/expenseCategories/${key}`), { name: name }).then(() => {
+                // If name changed, update ALL expenses that used the old name
+                if(oldName && oldName !== name) {
+                    const updates = {};
+                    data.expenses.forEach(exp => {
+                        if(exp.category === oldName) {
+                            updates[`users/${currentUser.uid}/expenses/${exp.key}/category`] = name;
+                        }
+                    });
+                    if(Object.keys(updates).length > 0) {
+                        update(ref(db), updates);
+                    }
+                }
+                
                 document.getElementById('catNameInput').value = '';
                 document.getElementById('catFirebaseKey').value = '';
-                renderCategoryList(); // Refresh list immediately
-                showToast('تم تعديل التصنيف');
+                renderCategoryList(); 
+                showToast('تم تعديل التصنيف وتحديث السجلات المرتبطة');
             });
         } else {
             // Create New
             set(push(ref(db, `users/${currentUser.uid}/expenseCategories`)), { id: Date.now(), name: name }).then(() => {
                 document.getElementById('catNameInput').value = '';
-                renderCategoryList(); // Refresh list immediately
+                renderCategoryList(); 
                 showToast('تمت إضافة التصنيف');
             });
         }
@@ -1411,7 +1428,9 @@
         }
     };
 
+    // Save Expense (Create or Update)
     window.saveExpense = () => {
+        const key = document.getElementById('expFirebaseKey').value;
         const cat = document.getElementById('expCategorySelect').value;
         const amount = document.getElementById('expAmount').value;
         const date = document.getElementById('expDate').value;
@@ -1419,13 +1438,56 @@
         
         if(!cat || !amount || !date) return alert('يرجى ملء كافة البيانات');
         
-        const exp = { id: Date.now(), category: cat, amount: Number(amount), date: date, note: note };
-        set(push(ref(db, `users/${currentUser.uid}/expenses`)), exp).then(() => {
-            document.getElementById('expAmount').value = '';
-            document.getElementById('expNote').value = '';
-            showToast('تم حفظ المصروف');
-        });
+        const expObj = { category: cat, amount: Number(amount), date: date, note: note };
+        
+        if (key) {
+             // Update Existing Expense
+             // Note: Keep ID same, update content
+             const existing = data.expenses.find(x => x.key === key);
+             expObj.id = existing.id; // Keep original ID
+             
+             update(ref(db, `users/${currentUser.uid}/expenses/${key}`), expObj).then(() => {
+                resetExpenseForm();
+                showToast('تم تعديل المصروف');
+             });
+        } else {
+            // Create New Expense
+            expObj.id = Date.now();
+            set(push(ref(db, `users/${currentUser.uid}/expenses`)), expObj).then(() => {
+                resetExpenseForm();
+                showToast('تم حفظ المصروف');
+            });
+        }
     };
+
+    // Prepare Edit Expense
+    window.editExpense = (key) => {
+        const e = data.expenses.find(x => x.key === key);
+        if(!e) return;
+        document.getElementById('expFirebaseKey').value = key;
+        document.getElementById('expCategorySelect').value = e.category;
+        document.getElementById('expDate').value = e.date;
+        document.getElementById('expAmount').value = e.amount;
+        document.getElementById('expNote').value = e.note || '';
+        
+        const btn = document.getElementById('btnSaveExpense');
+        btn.innerHTML = 'تعديل المصروف';
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-warning');
+        btn.classList.add('text-white');
+    };
+
+    function resetExpenseForm() {
+        document.getElementById('expFirebaseKey').value = '';
+        document.getElementById('expAmount').value = '';
+        document.getElementById('expNote').value = '';
+        
+        const btn = document.getElementById('btnSaveExpense');
+        btn.innerHTML = 'حفظ المصروف';
+        btn.classList.remove('btn-warning');
+        btn.classList.remove('text-white');
+        btn.classList.add('btn-danger');
+    }
 
     function renderExpensesTable() {
         const t = document.getElementById('expensesTable'); t.innerHTML = '';
@@ -1435,14 +1497,20 @@
                 <td><span class="badge bg-warning text-dark">${e.category}</span></td>
                 <td class="fw-bold text-danger" dir="ltr">${formatMoney(e.amount)}</td>
                 <td class="text-muted small">${e.note || '-'}</td>
-                <td><button class="btn btn-sm btn-outline-danger" onclick="deleteExpense('${e.key}')"><i class="fa fa-trash"></i></button></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary ms-1" onclick="editExpense('${e.key}')"><i class="fa fa-edit"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteExpense('${e.key}')"><i class="fa fa-trash"></i></button>
+                </td>
             </tr>`;
         });
     }
 
     window.deleteExpense = (key) => {
         if(confirm('حذف هذا المصروف؟')) {
-             remove(ref(db, `users/${currentUser.uid}/expenses/${key}`)).then(() => showToast('تم الحذف'));
+             remove(ref(db, `users/${currentUser.uid}/expenses/${key}`)).then(() => {
+                 if(document.getElementById('expFirebaseKey').value === key) resetExpenseForm();
+                 showToast('تم الحذف');
+             });
         }
     };
 

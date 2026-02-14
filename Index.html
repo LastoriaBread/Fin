@@ -516,11 +516,9 @@
             <div class="row">
                 <div class="col-md-4 mb-4">
                     <div class="card p-3 mb-3 border-warning border-2">
-                        <h6 class="fw-bold text-warning mb-3">إضافة تصنيف جديد</h6>
-                        <div class="input-group">
-                            <input type="text" id="expCatName" class="form-control" placeholder="اسم التصنيف (مثال: إيجار)">
-                            <button class="btn btn-warning text-white" onclick="saveExpCategory()">إضافة</button>
-                        </div>
+                         <button class="btn btn-outline-warning w-100 fw-bold" onclick="openCategoryModal()">
+                            <i class="fa fa-tags me-2"></i> إدارة تصنيفات المصروفات
+                        </button>
                     </div>
                     <div class="card p-4">
                         <h5 class="mb-4 text-danger fw-bold"><i class="fa fa-wallet me-2"></i> تسجيل مصروف</h5>
@@ -705,6 +703,27 @@
                     </div>
                 </div>
                 <button class="btn btn-primary w-100 mt-4 fw-bold py-2 shadow-sm" onclick="saveContact()">حفظ السجل</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="categoryModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light"><h5 class="modal-title fw-bold">إدارة تصنيفات المصروفات</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="catFirebaseKey">
+                <div class="input-group mb-4">
+                    <input type="text" id="catNameInput" class="form-control" placeholder="اسم التصنيف (مثال: كهرباء، رواتب)">
+                    <button class="btn btn-warning text-white" onclick="saveCategory()">حفظ</button>
+                </div>
+                <h6 class="fw-bold text-muted mb-3 border-bottom pb-2">التصنيفات الحالية</h6>
+                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm table-hover align-middle">
+                        <tbody id="categoryTableBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -902,6 +921,7 @@
         document.getElementById('sidebarBusName').innerText = data.profile.businessNameAr || "The Internal Reporting System";
 
         renderInvoicesTable(); renderItemsTable(); renderContactsTable(); renderPaymentsTable(); renderExpensesTable(); populateSelects();
+        renderCategoryList(); // Update the category modal list if open
 
         document.getElementById('setBusNameAr').value = data.profile.businessNameAr || '';
         document.getElementById('setBusNameEn').value = data.profile.businessNameEn || '';
@@ -1318,14 +1338,77 @@
         set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
 
-    // --- EXPENSES LOGIC ---
-    window.saveExpCategory = () => {
-        const name = document.getElementById('expCatName').value;
-        if(!name) return alert('أدخل اسم التصنيف');
-        set(push(ref(db, `users/${currentUser.uid}/expenseCategories`)), { id: Date.now(), name: name }).then(() => {
-            document.getElementById('expCatName').value = '';
-            showToast('تمت إضافة التصنيف');
+    // --- EXPENSES LOGIC (UPDATED WITH CRUD MODAL) ---
+    
+    // Open the management modal
+    window.openCategoryModal = () => {
+        document.getElementById('catNameInput').value = '';
+        document.getElementById('catFirebaseKey').value = '';
+        renderCategoryList();
+        new bootstrap.Modal(document.getElementById('categoryModal')).show();
+    };
+
+    // Render the list inside the modal
+    window.renderCategoryList = () => {
+        const tb = document.getElementById('categoryTableBody');
+        tb.innerHTML = '';
+        if(!data.expenseCategories || data.expenseCategories.length === 0) {
+            tb.innerHTML = '<tr><td colspan="2" class="text-center text-muted">لا توجد تصنيفات حالياً</td></tr>';
+            return;
+        }
+        data.expenseCategories.forEach(c => {
+            tb.innerHTML += `<tr>
+                <td class="fw-bold text-dark">${c.name}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary ms-1" onclick="editCategory('${c.key}')"><i class="fa fa-edit"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteCategory('${c.key}')"><i class="fa fa-trash"></i></button>
+                </td>
+            </tr>`;
         });
+    };
+
+    // Save (Create or Update)
+    window.saveCategory = () => {
+        const name = document.getElementById('catNameInput').value;
+        const key = document.getElementById('catFirebaseKey').value;
+        
+        if(!name) return alert('أدخل اسم التصنيف');
+        
+        if (key) {
+            // Update Existing
+            update(ref(db, `users/${currentUser.uid}/expenseCategories/${key}`), { name: name }).then(() => {
+                document.getElementById('catNameInput').value = '';
+                document.getElementById('catFirebaseKey').value = '';
+                renderCategoryList(); // Refresh list immediately
+                showToast('تم تعديل التصنيف');
+            });
+        } else {
+            // Create New
+            set(push(ref(db, `users/${currentUser.uid}/expenseCategories`)), { id: Date.now(), name: name }).then(() => {
+                document.getElementById('catNameInput').value = '';
+                renderCategoryList(); // Refresh list immediately
+                showToast('تمت إضافة التصنيف');
+            });
+        }
+    };
+
+    // Prepare Edit
+    window.editCategory = (key) => {
+        const cat = data.expenseCategories.find(c => c.key === key);
+        if (cat) {
+            document.getElementById('catNameInput').value = cat.name;
+            document.getElementById('catFirebaseKey').value = key;
+        }
+    };
+
+    // Delete
+    window.deleteCategory = (key) => {
+        if(confirm('هل أنت متأكد من حذف هذا التصنيف؟')) {
+             remove(ref(db, `users/${currentUser.uid}/expenseCategories/${key}`)).then(() => {
+                 renderCategoryList();
+                 showToast('تم الحذف');
+             });
+        }
     };
 
     window.saveExpense = () => {

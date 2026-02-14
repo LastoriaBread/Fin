@@ -719,6 +719,8 @@
                     <input type="text" id="catNameInput" class="form-control" placeholder="اسم التصنيف (مثال: كهرباء، رواتب)">
                     <button class="btn btn-warning text-white" onclick="saveCategory()">حفظ</button>
                 </div>
+                <hr>
+                <input type="text" id="catSearch" class="form-control mb-3" placeholder="بحث عن تصنيف..." onkeyup="filterCategories()">
                 <h6 class="fw-bold text-muted mb-3 border-bottom pb-2">التصنيفات الحالية</h6>
                 <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
                     <table class="table table-sm table-hover align-middle">
@@ -1339,12 +1341,13 @@
         set(push(ref(db, `users/${currentUser.uid}/payments`)), p).then(()=>{ showToast("تم الحفظ"); });
     };
 
-    // --- EXPENSES LOGIC (UPDATED WITH CASCADING UPDATE & EDIT) ---
+    // --- EXPENSES LOGIC (UPDATED WITH CASCADING UPDATE & EDIT & SEARCH) ---
     
     // Open the management modal
     window.openCategoryModal = () => {
         document.getElementById('catNameInput').value = '';
         document.getElementById('catFirebaseKey').value = '';
+        document.getElementById('catSearch').value = ''; // Reset search
         renderCategoryList();
         new bootstrap.Modal(document.getElementById('categoryModal')).show();
     };
@@ -1366,6 +1369,27 @@
                 </td>
             </tr>`;
         });
+        filterCategories(); // Re-apply filter if text exists
+    };
+
+    // Filter Categories
+    window.filterCategories = () => {
+        const input = document.getElementById('catSearch');
+        const filter = input.value.toUpperCase();
+        const tbody = document.getElementById('categoryTableBody');
+        const tr = tbody.getElementsByTagName('tr');
+
+        for (let i = 0; i < tr.length; i++) {
+            const td = tr[i].getElementsByTagName('td')[0];
+            if (td) {
+                const txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
     };
 
     // Save (Create or Update with Cascade)

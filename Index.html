@@ -429,6 +429,8 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h3 class="fw-bold text-dark">الأصناف والمنتجات</h3>
                 <div>
+                     <input type="file" id="importItemsExcelFile" class="d-none" accept=".xlsx, .xls" onchange="handleImportItems(event)">
+                     <button class="btn btn-warning me-2 text-white" onclick="document.getElementById('importItemsExcelFile').click()"><i class="fa fa-upload me-2"></i> استيراد من Excel</button>
                      <button class="btn btn-success me-2 text-white" onclick="exportToExcel('itemsTableRaw', 'Items_List')"><i class="fa fa-file-excel me-2"></i> Excel</button>
                      <button class="btn btn-primary" onclick="openItemModal()"><i class="fa fa-plus ms-2"></i> صنف جديد</button>
                 </div>
@@ -518,7 +520,7 @@
                         <h5 class="mb-4 text-danger fw-bold"><i class="fa fa-wallet me-2"></i> تسجيل مصروف</h5>
                         <input type="hidden" id="expFirebaseKey">
                         <label class="small text-muted fw-bold">التصنيف</label>
-                        <select id="expCategorySelect" class="form-select mb-3"></select>
+                        <select id="expCategorySelect" class="form-select select2 mb-3" style="width: 100%;"></select>
                         
                         <label class="small text-muted fw-bold">التاريخ</label>
                         <input type="date" id="expDate" class="form-control mb-3">
@@ -950,11 +952,12 @@
         nameSelect.innerHTML = '<option></option>'; codeSelect.innerHTML = '<option></option>'; 
         data.contacts.forEach(c => { nameSelect.add(new Option(c.name, c.id)); codeSelect.add(new Option(c.code, c.id)); });
 
-        const expCatSelect = document.getElementById('expCategorySelect');
-        expCatSelect.innerHTML = placeholder;
+        const expCatSelect = $('#expCategorySelect');
+        expCatSelect.empty().append(placeholder);
         data.expenseCategories.forEach(cat => {
-            expCatSelect.add(new Option(cat.name, cat.name));
+            expCatSelect.append(new Option(cat.name, cat.name));
         });
+        expCatSelect.trigger('change');
     }
 
     $(document).ready(function() {
@@ -1388,6 +1391,60 @@
 
     window.deleteItem = (key) => { if(!currentUser) return; if(confirm('هل أنت متأكد من حذف هذا الصنف؟')) remove(ref(db, `users/${currentUser.uid}/items/${key}`)).then(() => showToast('تم الحذف بنجاح')); };
 
+    window.handleImportItems = (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const dataFile = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(dataFile, {type: 'array'});
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+                
+                let addedCount = 0;
+                let currentCodeNum = data.items.length + 1;
+                const updates = {};
+                
+                json.forEach(row => {
+                    const nameAr = row['الاسم'] || row['اسم الصنف'] || row['NameAr'] || row['Name'] || row['الاسم (عربي)'];
+                    const price = row['السعر'] || row['Price'] || row['سعر البيع'];
+                    
+                    if(nameAr && price !== undefined) {
+                        const newRefKey = push(ref(db, `users/${currentUser.uid}/items`)).key;
+                        updates[`users/${currentUser.uid}/items/${newRefKey}`] = {
+                            id: Date.now() + addedCount,
+                            code: "ITM-" + String(currentCodeNum).padStart(4, '0'),
+                            nameAr: nameAr,
+                            nameEn: row['NameEn'] || row['الاسم (انجليزي)'] || row['Name En'] || '',
+                            price: Number(price),
+                            costPrice: Number(row['التكلفة'] || row['سعر التكلفة'] || row['Cost'] || 0),
+                            linkedContactId: "",
+                            specialPrice: ""
+                        };
+                        currentCodeNum++;
+                        addedCount++;
+                    }
+                });
+                
+                if(addedCount > 0) {
+                    update(ref(db), updates).then(() => {
+                        showToast(`تم استيراد ${addedCount} صنف بنجاح`);
+                        e.target.value = ''; // Reset file input
+                    }).catch(err => alert("حدث خطأ أثناء الحفظ: " + err.message));
+                } else {
+                    alert("لم يتم العثور على بيانات صحيحة. يرجى التأكد من وجود عمود باسم 'الاسم' وعمود 'السعر'");
+                    e.target.value = '';
+                }
+            } catch(error) {
+                alert("حدث خطأ أثناء قراءة الملف: " + error.message);
+                e.target.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
     window.saveSettings = () => {
         const save = (l) => {
             const d = { businessNameAr: document.getElementById('setBusNameAr').value, businessNameEn: document.getElementById('setBusNameEn').value, address: document.getElementById('setAddr').value, vat: document.getElementById('setVAT').value, crNumber: document.getElementById('setCR').value, phone: document.getElementById('setPhone').value, email: document.getElementById('setEmail').value };
@@ -1569,7 +1626,7 @@
         const e = data.expenses.find(x => x.key === key);
         if(!e) return;
         document.getElementById('expFirebaseKey').value = key;
-        document.getElementById('expCategorySelect').value = e.category;
+        $('#expCategorySelect').val(e.category).trigger('change');
         document.getElementById('expDate').value = e.date;
         document.getElementById('expAmount').value = e.amount;
         document.getElementById('expNote').value = e.note || '';
@@ -1583,6 +1640,7 @@
 
     function resetExpenseForm() {
         document.getElementById('expFirebaseKey').value = '';
+        $('#expCategorySelect').val('').trigger('change');
         document.getElementById('expAmount').value = '';
         document.getElementById('expNote').value = '';
         

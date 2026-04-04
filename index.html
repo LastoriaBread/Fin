@@ -669,7 +669,16 @@
 
                 <div class="table-responsive mb-4">
                     <table class="table table-bordered text-center" id="soaTableRaw">
-                        <thead class="table-light"><tr><th>التاريخ</th><th>البيان</th><th>المرجع</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Reference</th>
+                                <th>Dr.</th>
+                                <th>Cr.</th>
+                                <th>Balance</th>
+                            </tr>
+                        </thead>
                         <tbody id="soaTable"></tbody>
                     </table>
                 </div>
@@ -1807,8 +1816,27 @@
 
         const tb = document.getElementById('soaTable'); tb.innerHTML='';
         let runningBal = 0;
+        let previousBal = 0; 
         let movements = [];
 
+        // --- 1. حساب الرصيد الافتتاحي (العمليات قبل تاريخ dFrom) ---
+        if (dFrom) {
+            // حساب فواتير ما قبل التاريخ
+            data.invoices.filter(i => i.contactId == cid && i.date < dFrom).forEach(x => {
+                if(x.type === 'Sales Invoice') previousBal += x.total; 
+                else previousBal -= x.total; // Purchase Invoice أو Credit Note
+            });
+
+            // حساب مقبوضات ومدفوعات ما قبل التاريخ
+            data.payments.filter(p => p.contactId == cid && p.date < dFrom).forEach(x => {
+                const amt = Number(x.amount);
+                if(x.type === 'Receipt') previousBal -= amt; 
+                else if(x.type === 'Payment') previousBal += amt; 
+                else { if(amt >= 0) previousBal += amt; else previousBal -= Math.abs(amt); } // Adjustment
+            });
+        }
+
+        // --- 2. جلب العمليات داخل الفترة المحددة ---
         data.invoices.filter(i => i.contactId == cid).forEach(x => {
             if(dFrom && x.date < dFrom) return;
             if(dTo && x.date > dTo) return;
@@ -1818,7 +1846,6 @@
             let desc = `${typeNameDesc}`;
             if(x.internalNote) desc += ` <br><span class="text-muted small">(${x.internalNote})</span>`;
             
-            // إضافة رقم المرجع بشكل منفصل
             let refNum = x.ref;
 
             movements.push({ date: x.date, desc: desc, refNum: refNum, debit: debit, credit: credit, ts: new Date(x.date).getTime() });
@@ -1838,17 +1865,31 @@
             let desc = `${typeName}`;
             if(x.note) desc += ` <br><span class="text-muted small fst-italic">(${x.note})</span>`;
             
-            // إضافة رقم المرجع (رقم القيد) بشكل منفصل
             let refNum = x.id.toString().slice(-4);
 
             movements.push({ date: x.date, desc: desc, refNum: refNum, debit: debit, credit: credit, ts: new Date(x.date).getTime() });
         });
 
         movements.sort((a,b) => a.ts - b.ts);
+        
+        // --- 3. طباعة الرصيد الافتتاحي في الجدول (إن وجد) ---
+        runningBal = previousBal;
+        if (dFrom) {
+            tb.innerHTML += `<tr class="table-warning">
+                <td style="white-space: nowrap;">-</td>
+                <td class="text-end pe-3 fw-bold">الرصيد الافتتاحي للفترة السابقة (Previous Balance)</td>
+                <td>-</td>
+                <td class="text-danger fw-bold">${previousBal > 0 ? formatMoney(previousBal) : '-'}</td>
+                <td class="text-success fw-bold">${previousBal < 0 ? formatMoney(Math.abs(previousBal)) : '-'}</td>
+                <td class="fw-bold" dir="ltr">${formatMoney(runningBal)}</td>
+            </tr>`;
+        }
+
+        // --- 4. طباعة باقي العمليات ---
         movements.forEach(m => {
             runningBal = runningBal + m.debit - m.credit;
             tb.innerHTML += `<tr>
-                <td>${m.date}</td>
+                <td style="white-space: nowrap;">${m.date}</td>
                 <td class="text-end pe-3">${m.desc}</td>
                 <td class="fw-bold text-secondary" dir="ltr">${m.refNum}</td>
                 <td class="text-danger fw-bold">${m.debit > 0 ? formatMoney(m.debit) : '-'}</td>
